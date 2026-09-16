@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class GuardError(Exception):
     """Base exception for agent-guard errors."""
 
@@ -36,3 +39,20 @@ class PolicyEvaluationError(GuardError):
 
 class RedactionError(GuardError):
     pass
+
+
+class AgentGuardViolation(GuardError):
+    """Raised when AgentGuard policy enforcement blocks or quarantines content."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        source: str | None = None,
+        decision: Any | None = None,
+        content: Any = None,
+    ) -> None:
+        super().__init__(message)
+        self.source = source
+        self.decision = decision
+        self.content = content

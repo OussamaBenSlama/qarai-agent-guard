@@ -12,14 +12,36 @@ from qarai_agent_guard.core.schemas.guard import (
 
 
 def test_detectors_can_be_a_single_detector():
-    agent_guard = AgentGuard(detectors=Detector(default_rules="pii"))
+    detector = Detector(default_rules="pii")
 
-    assert agent_guard.detectors is not []
+    agent_guard = AgentGuard(detectors=detector)
+
+    assert agent_guard.detectors == [detector]
 
 
 def test_detectors_must_be_detector_instances():
-    with pytest.raises(TypeError, match="must be Detector"):
+    with pytest.raises(
+        TypeError,
+        match="detectors must be a Detector or list of Detectors",
+    ):
         AgentGuard(detectors=["not-a-detector"])
+
+
+def test_detectors_can_be_a_list_of_detectors():
+    detector1 = Detector(name="pii_detector", default_rules="pii")
+    detector2 = Detector(name="secret_detector", default_rules="secrets")
+
+    agent_guard = AgentGuard(detectors=[detector1, detector2])
+
+    assert agent_guard.detectors == [detector1, detector2]
+
+
+def test_detectors_must_be_detector_or_list():
+    with pytest.raises(
+        TypeError,
+        match="detectors must be a Detector or list of Detectors",
+    ):
+        AgentGuard(detectors="not-a-detector")
 
 
 def test_invalid_policy_configuration():

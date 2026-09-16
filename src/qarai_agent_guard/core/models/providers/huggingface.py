@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from qarai_agent_guard.core.exceptions import (
     ModelInferenceError,
     ModelLoadError,
 )
+from qarai_agent_guard.core.logger import logger
 from qarai_agent_guard.core.models.providers.base import ModelProvider
 from qarai_agent_guard.core.schemas.models import ModelConfig, ModelTask
-
-logger = logging.getLogger(__name__)
 
 _TASK_TO_PIPELINE_NAME: dict[ModelTask, str] = {
     ModelTask.TEXT_CLASSIFICATION: "text-classification",

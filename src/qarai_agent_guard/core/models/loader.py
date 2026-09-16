@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import json
-import logging
 import threading
 
 from qarai_agent_guard.core.exceptions import ConfigurationError, ModelLoadError
+from qarai_agent_guard.core.logger import logger
 from qarai_agent_guard.core.models.providers import (
     ModelProvider,
     ModelProviderFactory,
 )
 from qarai_agent_guard.core.schemas.models import ModelConfig
-
-logger = logging.getLogger(__name__)
 
 
 class ModelLoader:

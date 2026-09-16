@@ -27,6 +27,7 @@ CLEAN_PAYLOAD = "The system completed the deployment successfully."
 PII_PAYLOAD = "Contact sarah.connor@cyberdyne.com to schedule the demo."
 
 
+# utils
 def redact_policy() -> SeverityPolicy:
     """Policy that redacts any detected severity for redaction e2e tests."""
     return SeverityPolicy(
@@ -45,6 +46,7 @@ def redact_policy() -> SeverityPolicy:
     )
 
 
+# --------------tests---------------
 @pytest.mark.integration
 @pytest.mark.e2e
 def test_model_only_guard_blocks_prompt_injection(injection_engine):

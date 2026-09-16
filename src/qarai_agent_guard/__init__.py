@@ -1,4 +1,5 @@
 from qarai_agent_guard.core.detectors.detector import Detector
+from qarai_agent_guard.core.exceptions import AgentGuardViolation
 from qarai_agent_guard.core.guards.agent_guard import AgentGuard
 from qarai_agent_guard.core.loaders.policy_loader import PolicyLoader, PolicyLoaderError
 from qarai_agent_guard.core.policies.base import (
@@ -12,28 +13,33 @@ from qarai_agent_guard.core.policies.defaults import (
     permissive_policy,
     strict_policy,
 )
+from qarai_agent_guard.core.policies.enforcement import PolicyExecutor
 from qarai_agent_guard.core.schemas.detector import DefaultRules, DetectorType
 from qarai_agent_guard.core.schemas.events import Action, Severity
 from qarai_agent_guard.core.schemas.guard import SecurityMode
 from qarai_agent_guard.core.schemas.models import ModelConfig, ModelDetectionResult
+from qarai_agent_guard.core.schemas.policy import EnforcementResult
 
 __all__ = [
-    "Detector",
+    "Action",
     "AgentGuard",
+    "AgentGuardViolation",
+    "DefaultRules",
+    "Detector",
+    "DetectorType",
+    "EnforcementResult",
+    "ModelConfig",
+    "ModelDetectionResult",
     "Policy",
     "PolicyDecision",
-    "default_policy",
-    "permissive_policy",
-    "strict_policy",
-    "Action",
-    "SecurityMode",
+    "PolicyExecutor",
     "PolicyLoader",
     "PolicyLoaderError",
+    "SecurityMode",
     "Severity",
     "SeverityPolicy",
     "SeverityRule",
-    "DetectorType",
-    "DefaultRules",
-    "ModelConfig",
-    "ModelDetectionResult",
+    "default_policy",
+    "permissive_policy",
+    "strict_policy",
 ]
