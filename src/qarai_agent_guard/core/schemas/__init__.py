@@ -10,12 +10,17 @@ from qarai_agent_guard.core.schemas.models import (
     ModelDetectionResult,
     ModelProviderName,
 )
-from qarai_agent_guard.core.schemas.policy import PolicyDecision, SeverityRule
+from qarai_agent_guard.core.schemas.policy import (
+    EnforcementResult,
+    PolicyDecision,
+    SeverityRule,
+)
 
 __all__ = [
     "DefaultRules",
     "DetectionResult",
     "DetectorType",
+    "EnforcementResult",
     "ExecutionStrategy",
     "FailBehavior",
     "Match",

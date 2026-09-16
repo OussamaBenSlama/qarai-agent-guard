@@ -40,7 +40,7 @@ class AgentGuard:
     def __init__(
         self,
         *,
-        detectors: list[Detector],
+        detectors: list[Detector] | Detector,
         policy: Policy | None = None,
         fail_behavior: FailBehavior | str = FailBehavior.FAIL_OPEN,
         security_mode: SecurityMode | str = SecurityMode.ENFORCE,
@@ -76,23 +76,23 @@ class AgentGuard:
         """
 
         if isinstance(detectors, Detector):
-            detectors = [detectors]
-        if isinstance(detectors, list):
+            self.detectors = [detectors]
+        elif isinstance(detectors, list):
             self.detectors = detectors
         else:
-            raise TypeError(f"detectors must be a Detector or list of Detectors, got {type(detectors).__name__}")
+            raise TypeError(
+                "detectors must be a Detector or list of Detectors, "
+                f"got {type(detectors).__name__}"
+            )
 
-        for index, detector in enumerate(detectors):
+        for index, detector in enumerate(self.detectors):
             if not isinstance(detector, Detector):
-                msg = (
-                    f"detectors[{index}] must be Detector, "
-                    f"got {type(detector).__name__}"
-                )
+                msg = "detectors must be a Detector or list of Detectors"
                 raise TypeError(msg)
 
         # Validate uniqueness
         seen_names: set[str] = set()
-        for detector in detectors:
+        for detector in self.detectors:
             if detector.name in seen_names:
                 msg = (
                     f"Duplicate detector name '{detector.name}'. "
@@ -115,7 +115,6 @@ class AgentGuard:
             execution_strategy, ExecutionStrategy, "execution_strategy"
         )
 
-        self.detectors: list[Detector] = list(detectors)
         self.policy: Policy = policy or default_policy()
         self.fail_behavior: FailBehavior = fail_behavior
         self.security_mode: SecurityMode = security_mode
@@ -141,7 +140,7 @@ class AgentGuard:
     def create(
         cls,
         *,
-        detectors: list[Detector],
+        detectors: list[Detector] | Detector,
         policy: Policy | None = None,
         policy_path: str | Path | None = None,
         fail_behavior: FailBehavior | str = FailBehavior.FAIL_OPEN,
@@ -152,7 +151,7 @@ class AgentGuard:
         """Build an AgentGuard, optionally loading policy from a YAML file.
 
         Args:
-            detectors (list[Detector]): Detector instances. Required.
+            detectors (list[Detector] | Detector): Detector instances. Required.
             policy (Policy | None, optional): Explicit policy object.
             policy_path (str | Path | None, optional): Path to a YAML policy file.
             fail_behavior (FailBehavior | str): Error handling strategy.

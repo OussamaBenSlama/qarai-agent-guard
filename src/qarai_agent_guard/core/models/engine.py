@@ -199,9 +199,7 @@ class DefaultOutputFormatter:
         )
 
     @staticmethod
-    def _format_generation(
-        raw: Any, config: ModelConfig
-    ) -> ModelDetectionResult:
+    def _format_generation(raw: Any, config: ModelConfig) -> ModelDetectionResult:
         text = str(raw[0].get("generated_text", "")).strip().lower()
 
         if _POSITIVE_VERDICT_RE.search(text):

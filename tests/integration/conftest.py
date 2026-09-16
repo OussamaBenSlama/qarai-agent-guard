@@ -39,7 +39,7 @@ def pytest_collection_modifyitems(
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _integration_model_logging() -> None:
+def _integration_model_logging():
     """
     Surface model loading logs to stdout while integration tests run.
 
@@ -68,7 +68,7 @@ def pii_config():
 
 
 @pytest.fixture(scope="session")
-def model_loader() -> ModelLoader:
+def model_loader():
     """
     Session-scoped loader shared by all integration tests.
 

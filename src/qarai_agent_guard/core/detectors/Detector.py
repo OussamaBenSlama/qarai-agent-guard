@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -9,6 +8,7 @@ from qarai_agent_guard.core.exceptions import ConfigurationError
 from qarai_agent_guard.core.helpers.detection_utils import normalize_language
 from qarai_agent_guard.core.helpers.stringify import StringifyError, _stringify
 from qarai_agent_guard.core.loaders.pattern_loader import PatternLoader
+from qarai_agent_guard.core.logger import logger
 from qarai_agent_guard.core.models import resolve_default_model
 from qarai_agent_guard.core.models.engine import InferenceEngine
 from qarai_agent_guard.core.schemas.detection import (
@@ -22,8 +22,6 @@ from qarai_agent_guard.core.schemas.detector import (
     DetectorType,
 )
 from qarai_agent_guard.core.schemas.models import ModelConfig, ModelDetectionResult
-
-logger = logging.getLogger(__name__)
 
 
 class Detector:
