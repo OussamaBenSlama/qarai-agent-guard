@@ -5,22 +5,27 @@ from collections.abc import Callable
 from typing import Any
 
 from qarai_agent_guard.core.exceptions import AgentGuardViolation
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
+from qarai_agent_guard.core.guards import AgentGuard
 from qarai_agent_guard.core.logger import logger
-from qarai_agent_guard.core.schemas.events import Action, Severity, SourceClass
-from qarai_agent_guard.core.schemas.policy import EnforcementResult, PolicyDecision
+from qarai_agent_guard.core.schemas import (
+    Action,
+    EnforcementResult,
+    PolicyDecision,
+    Severity,
+    SourceClass,
+)
 
 
 class PolicyExecutor:
-    """Central policy enforcement engine for AgentGuard decisions.
+    """Central enforcement engine for AgentGuard decisions.
 
-    Transforms a PolicyDecision into actual security side-effects: ALLOW,
-    WARN, REDACT, BLOCK, or QUARANTINE.
+    Transform a PolicyDecision into security side-effects.
+    The actions are ALLOW, WARN, REDACT, BLOCK, or QUARANTINE.
 
-    This executor standardizes enforcement logic across core guards and external
-    framework integrations (e.g., LangChain, CrewAI), while offering robust
-    customization options like callbacks, custom loggers, and configurable
-    violation behavior.
+    This executor standardizes enforcement logic across core guards and
+    external framework integrations, for example LangChain and CrewAI.
+    It offers customization options such as callbacks, custom loggers, and
+    configurable violation behavior.
     """
 
     def __init__(
@@ -37,20 +42,22 @@ class PolicyExecutor:
         """Initialize the policy executor.
 
         Args:
-            guard: Optional AgentGuard instance used for redaction and event emission.
-            quarantine_handler: Optional callback invoked when action is QUARANTINE.
-                Called with (source=..., content=..., decision=...).
-            on_violation: Optional callback invoked when a policy violation occurs
-                (BLOCK, QUARANTINE, redaction failure, unrecognized action).
-                Called with (source=..., decision=..., content=...).
-            on_warn: Optional callback invoked when action is WARN.
-                Called with (source=..., decision=..., content=...).
+            guard: Optional AgentGuard instance.
+                The guard is used for redaction and event emission.
+            quarantine_handler: Optional callback for QUARANTINE action.
+                Called with the source, content, and decision.
+            on_violation: Optional callback for a policy violation.
+                It applies to BLOCK, QUARANTINE, redaction failure, and
+                unrecognized action.
+                Called with the source, decision, and content.
+            on_warn: Optional callback for WARN action.
+                Called with the source, decision, and content.
             raise_on_violation: If True (default), policy violations raise an
-                AgentGuardViolation exception. If False, returns EnforcementResult
-                with blocked=True.
-            emit_events: If True (default), telemetry events are emitted via guard
+                AgentGuardViolation exception. If False, the enforcement
+                returns a result with blocked set to True.
+            emit_events: If True (default), the guard emits telemetry events
                 when available.
-            custom_logger: Optional logger override for internal diagnostic logging.
+            custom_logger: Optional logger for internal diagnostics.
         """
         self.guard = guard
         self.quarantine_handler = quarantine_handler
@@ -63,12 +70,15 @@ class PolicyExecutor:
 
     @property
     def violations(self) -> int:
-        """Return total count of policy violations handled by this executor."""
+        """Return the count of policy violations handled by this executor."""
         return self._violations
 
     @property
     def violation_count(self) -> int:
-        """Alias for violations property."""
+        """Return the violations count.
+
+        This property is an alias for ``violations``.
+        """
         return self._violations
 
     def _call_callback(
@@ -81,7 +91,10 @@ class PolicyExecutor:
         log_label: str,
         swallow_exceptions: bool = True,
     ) -> Any:
-        """Helper to invoke user callbacks with keyword argument fallback."""
+        """Invoke a user callback.
+
+        Fall back to positional arguments if keyword arguments fail.
+        """
         try:
             return callback(source=source, decision=decision, content=content)
         except TypeError:
@@ -105,7 +118,10 @@ class PolicyExecutor:
         decision: PolicyDecision,
         content: Any,
     ) -> None:
-        """Increment violation counter and invoke on_violation callback safely."""
+        """Increment the violation counter.
+
+        Invoke the ``on_violation`` callback.
+        """
         self._violations += 1
         if self.on_violation is not None:
             self._call_callback(
@@ -118,8 +134,10 @@ class PolicyExecutor:
             )
 
     def _emit_safe(self, **kwargs: Any) -> None:
-        """Emit telemetry event via guard without letting telemetry
-        failure crash enforcement."""
+        """Emit a telemetry event through the guard.
+
+        Telemetry failure does not crash enforcement.
+        """
         if not self.emit_events or self.guard is None:
             return
         try:
@@ -139,18 +157,20 @@ class PolicyExecutor:
         """Enforce a policy decision against content.
 
         Args:
-            decision: PolicyDecision object containing the action and reason.
-            content: The input, output, or tool payload to enforce against.
+            decision: PolicyDecision object.
+                It contains the action and the reason.
+            content: The input, output, or tool payload.
             detections: Optional list of detection results for redaction.
-            source: Identifier describing the source of the content.
+            source: Identifier for the content source.
 
         Returns:
-            EnforcementResult containing the enforced content, action, and flags.
+            EnforcementResult: The enforced content, action, and flags.
 
         Raises:
-            AgentGuardViolation: If action is BLOCK, QUARANTINE,
-                redaction failure, or unrecognized action,
-                and raise_on_violation is True.
+            AgentGuardViolation: If the action is BLOCK or QUARANTINE,
+                if redaction fails, or if the action is unrecognized.
+                This exception applies only when ``raise_on_violation``
+                is set to True.
         """
         action = decision.action
 
@@ -223,7 +243,7 @@ class PolicyExecutor:
                     )
                 except Exception as exc:
                     self.logger.exception(
-                        "AgentGuard: redaction failed for source=%s,",
+                        "AgentGuard: redaction failed for source=%s,"
                         "falling back to block",
                         source,
                     )
@@ -235,12 +255,7 @@ class PolicyExecutor:
                         f"and blocked it instead. Reason: {decision.reason}"
                     )
                     if self.raise_on_violation:
-                        raise AgentGuardViolation(
-                            msg,
-                            source=source,
-                            decision=decision,
-                            content=content,
-                        ) from exc
+                        raise AgentGuardViolation(msg) from exc
                     return EnforcementResult(
                         content=content,
                         action=Action.BLOCK,
@@ -252,7 +267,7 @@ class PolicyExecutor:
                     )
             else:
                 self.logger.warning(
-                    "AgentGuard: redaction requested for source=%s",
+                    "AgentGuard: redaction requested for source=%s "
                     "but no AgentGuard instance provided; blocking",
                     source,
                 )
@@ -265,12 +280,7 @@ class PolicyExecutor:
                     f"Reason: {decision.reason}"
                 )
                 if self.raise_on_violation:
-                    raise AgentGuardViolation(
-                        msg,
-                        source=source,
-                        decision=decision,
-                        content=content,
-                    )
+                    raise AgentGuardViolation(msg)
                 return EnforcementResult(
                     content=content,
                     action=Action.BLOCK,
@@ -289,12 +299,7 @@ class PolicyExecutor:
                 f"Reason:\n{decision.reason}"
             )
             if self.raise_on_violation:
-                raise AgentGuardViolation(
-                    msg,
-                    source=source,
-                    decision=decision,
-                    content=content,
-                )
+                raise AgentGuardViolation(msg)
             return EnforcementResult(
                 content=content,
                 action=action,
@@ -334,12 +339,7 @@ class PolicyExecutor:
                         f"Reason:\n{decision.reason}"
                     )
                     if self.raise_on_violation:
-                        raise AgentGuardViolation(
-                            msg,
-                            source=source,
-                            decision=decision,
-                            content=content,
-                        ) from exc
+                        raise AgentGuardViolation(msg) from exc
                     return EnforcementResult(
                         content=content,
                         action=action,
@@ -356,12 +356,7 @@ class PolicyExecutor:
                 f"Source:\n{source}\n\nReason:\n{decision.reason}"
             )
             if self.raise_on_violation:
-                raise AgentGuardViolation(
-                    msg,
-                    source=source,
-                    decision=decision,
-                    content=content,
-                )
+                raise AgentGuardViolation(msg)
             return EnforcementResult(
                 content=content,
                 action=action,
@@ -381,12 +376,7 @@ class PolicyExecutor:
             f"source={source} and blocked as a precaution."
         )
         if self.raise_on_violation:
-            raise AgentGuardViolation(
-                msg,
-                source=source,
-                decision=decision,
-                content=content,
-            )
+            raise AgentGuardViolation(msg)
         return EnforcementResult(
             content=content,
             action=action,

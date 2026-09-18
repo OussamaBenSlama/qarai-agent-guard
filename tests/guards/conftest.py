@@ -4,9 +4,8 @@ from typing import Any
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.schemas.detection import DetectionResult
+from qarai_agent_guard import AgentGuard, Detector
+from qarai_agent_guard.core.schemas import DetectionResult
 
 IBAN_SAMPLE = "FR1420041010050500013M02606"
 CARD_SAMPLE = "4111 1111 1111 1111"

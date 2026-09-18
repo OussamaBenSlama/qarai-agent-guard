@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from typing import Any
 
-from qarai_agent_guard.core.schemas.events import Action, Severity
+from qarai_agent_guard.core.schemas import (
+    Action,
+    Severity,
+)
 
 
 @dataclass(slots=True)

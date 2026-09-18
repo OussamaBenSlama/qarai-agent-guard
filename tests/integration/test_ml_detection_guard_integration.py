@@ -8,13 +8,13 @@ import logging
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.models.config import resolve_default_model
-from qarai_agent_guard.core.models.engine import InferenceEngine
-from qarai_agent_guard.core.models.loader import ModelLoader
-from qarai_agent_guard.core.policies.base import SeverityPolicy, SeverityRule
-from qarai_agent_guard.core.schemas.events import Action, Severity
+from qarai_agent_guard import AgentGuard, Detector, SeverityPolicy
+from qarai_agent_guard.core.models import (
+    InferenceEngine,
+    ModelLoader,
+    resolve_default_model,
+)
+from qarai_agent_guard.core.schemas import Action, Severity, SeverityRule
 
 MODEL_LOGGER = "qarai_agent_guard.core.models"
 

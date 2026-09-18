@@ -8,12 +8,12 @@ from qarai_agent_guard.core.exceptions import (
     ModelOutputError,
 )
 from qarai_agent_guard.core.models.loader import ModelLoader
-from qarai_agent_guard.core.schemas.events import Severity
-from qarai_agent_guard.core.schemas.models import (
+from qarai_agent_guard.core.schemas import (
     ModelConfig,
-    ModelDetectionResult,
     ModelTask,
+    Severity,
 )
+from qarai_agent_guard.core.schemas.models import ModelDetectionResult
 
 _POSITIVE_TEXT_MARKERS = ("true", "yes", "unsafe", "block", "malicious", "injection")
 _NEGATIVE_TEXT_MARKERS = ("false", "no", "safe", "allow", "benign", "clean")
@@ -35,7 +35,10 @@ def _severity_for_score(score: float, threshold: float) -> Severity:
 
 
 def _as_float(value: Any) -> float | None:
-    """Best-effort coercion of numpy/torch scalar-likes to a native float."""
+    """Convert a numpy/torch scalar-like value to a native float.
+
+    Return ``None`` when the value is a ``bool`` or cannot be converted.
+    """
     if isinstance(value, bool):
         return None
     if isinstance(value, int | float):
@@ -54,9 +57,9 @@ def _as_float(value: Any) -> float | None:
 class DefaultOutputFormatter:
     """Format model outputs into detection results.
 
-    Recognizes, without any developer-supplied formatter:
+    Recognize the output shapes below without a developer-supplied formatter:
 
-    - ``bool`` values, where ``True`` indicates a detected issue.
+    - ``bool`` values. ``True`` indicates a detected issue.
     - Integer labels ``0`` and ``1``.
     - Floating-point confidence scores in ``[0, 1]``.
     - ``pipeline("text-classification")`` shape:
@@ -64,10 +67,10 @@ class DefaultOutputFormatter:
       Detection is ``score >= config.threshold``.
     - ``pipeline("token-classification")`` shape:
       ``list[{"entity"/"entity_group": str, "score": float, ...}]``.
-      Detection is true if any entity's score meets the threshold; overall
-      score is the max entity score (``0.0`` if the list is empty).
+      Detection is true if any entity's score meets the threshold. The
+      overall score is the max entity score (``0.0`` if the list is empty).
     - ``pipeline("text-generation" | "text2text-generation")`` shape:
-      ``[{"generated_text": str}]``. The text is matched case-insensitively
+      ``[{"generated_text": str}]``. Match the text case-insensitively
       against a small set of positive/negative verdict words
       (true/false, safe/unsafe, etc.).
 

@@ -4,9 +4,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-from qarai_agent_guard.core.exceptions import ConfigurationError
-from qarai_agent_guard.core.helpers.detection_utils import normalize_language
-from qarai_agent_guard.core.helpers.stringify import StringifyError, _stringify
+from qarai_agent_guard.core.exceptions import ConfigurationError, StringifyError
+from qarai_agent_guard.core.helpers import normalize_language
+from qarai_agent_guard.core.helpers.stringify import _stringify
 from qarai_agent_guard.core.loaders.pattern_loader import PatternLoader
 from qarai_agent_guard.core.logger import logger
 from qarai_agent_guard.core.models import resolve_default_model
@@ -30,14 +30,14 @@ class Detector:
 
     The detector supports three detection modes:
 
-    - Regex-based detection using configurable pattern rules.
-    - Model-based detection using an inference engine.
-    - Mixed detection combining regex and model results.
+    - Regex-based detection with configurable pattern rules.
+    - Model-based detection with an inference engine.
+    - Mixed detection that combines regex and model results.
 
     Parameters
     ----------
     lang:
-        Language code used when resolving language-dependent default rules.
+        Language code used to resolve language-dependent default rules.
         Supported values are ``"en"``, ``"fr"``, and ``"ar"``.
         Defaults to ``"en"``.
 
@@ -115,7 +115,7 @@ class Detector:
             succeed.
 
         ``"precedence"``
-            Uses precedence-based matching between regex and model results.
+            Use precedence-based matching between regex and model results.
 
     Raises
     ------
@@ -148,7 +148,7 @@ class Detector:
         Parameters
         ----------
         lang:
-            Language used when resolving language-dependent rules.
+            Language used to resolve language-dependent rules.
 
         patterns:
             Optional inline regex rule definitions.
@@ -248,9 +248,9 @@ class Detector:
         """
         Inspect a value for configured security threats.
 
-        The method evaluates regex rules, model inference, or both depending
-        on the configured detector type. In mixed mode, the results are
-        combined according to ``combination_strategy``.
+        Evaluate regex rules, model inference, or both. The detector type
+        selects the mode. In mixed mode, combine the results according to
+        ``combination_strategy``.
 
         Parameters
         ----------
@@ -258,8 +258,8 @@ class Detector:
             Logical name or path identifying the value being inspected.
 
         value:
-            Arbitrary value to inspect. The value is converted to text before
-            detection.
+            Arbitrary value to inspect. The detector converts the value to
+            text before detection.
 
         operation:
             Name of the operation being performed on the value, such as
@@ -372,15 +372,15 @@ class Detector:
         """
         Redact sensitive values from input text.
 
-        Regex-based rules are applied first. Model-detected entities are then
-        replaced in reverse positional order so that earlier replacements do
-        not invalidate the offsets of later entities.
+        Regex-based rules are applied first. Replace model-detected entities
+        in reverse positional order. Earlier replacements do not invalidate
+        the offsets of later entities.
 
         Parameters
         ----------
         value:
-            Arbitrary value to redact. The value is converted to text using
-            the library's stringification helper.
+            Arbitrary value to redact. The detector converts the value to
+            text with the library's stringification helper.
 
         entities:
             Optional model entities or detection result containing entities
@@ -390,8 +390,8 @@ class Detector:
             - A :class:`ModelDetectionResult`.
             - A :class:`DetectionResult`.
 
-            Each entity is expected to contain ``start`` and ``end`` offsets.
-            ``entity_group`` is used as the redaction label when available.
+            Each entity must contain ``start`` and ``end`` offsets.
+            Use ``entity_group`` as the redaction label when available.
 
         Returns
         -------
@@ -624,7 +624,7 @@ class Detector:
         -------
         bool
             ``True`` when the configured detection strategy considers the
-            input to contain a security issue; otherwise ``False``.
+            input to contain a security issue. Otherwise ``False``.
         """
         regex_detected = bool(hits)
         model_detected = bool(model_result and model_result.detected)
@@ -673,7 +673,7 @@ class Detector:
         Returns
         -------
         str
-            Detection message, or an empty string when no issue was detected.
+            Detection message or an empty string when no issue is detected.
         """
         if not matched:
             return ""
@@ -790,8 +790,8 @@ class Detector:
         Raises
         ------
         ValueError
-            If an entity is missing ``start`` or ``end``, or if the offsets
-            are not integers, or if ``start`` is greater than ``end``.
+            If an entity is missing ``start`` or ``end``, the offsets are
+            not integers, or ``start`` is greater than ``end``.
         """
         for index, entity in enumerate(entities):
             if not isinstance(entity, dict):
@@ -829,7 +829,7 @@ class Detector:
         Validate and compile regex rule definitions.
 
         Each rule must contain the required fields ``id``, ``name``,
-        ``severity``, and ``pattern``. Patterns are compiled using
+        ``severity``, and ``pattern``. Compile the patterns with
         case-insensitive and DOTALL matching.
 
         Parameters

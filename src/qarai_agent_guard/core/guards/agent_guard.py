@@ -5,16 +5,17 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from qarai_agent_guard.core.detectors.detector import Detector
+from qarai_agent_guard.core.detectors import Detector
 from qarai_agent_guard.core.exceptions import (
     DetectorExecutionError,
     PolicyEvaluationError,
     RedactionError,
 )
-from qarai_agent_guard.core.helpers.detection_utils import highest_result_severity
-from qarai_agent_guard.core.loaders.policy_loader import PolicyLoader
-from qarai_agent_guard.core.policies.base import Policy, PolicyDecision
+from qarai_agent_guard.core.helpers import highest_result_severity
+from qarai_agent_guard.core.loaders import PolicyLoader
+from qarai_agent_guard.core.policies import Policy
 from qarai_agent_guard.core.policies.defaults import default_policy
+from qarai_agent_guard.core.schemas import PolicyDecision
 from qarai_agent_guard.core.schemas.detection import DetectionResult
 from qarai_agent_guard.core.schemas.events import (
     Action,
@@ -31,10 +32,10 @@ from qarai_agent_guard.core.schemas.guard import (
 
 
 class AgentGuard:
-    """Central orchestration layer for detector execution and policy enforcement.
+    """Run detectors and enforce policy decisions.
 
-    Runs registered detectors against memory payloads, evaluates policy rules,
-    emits structured security events, and supports dynamic detector management.
+    This class runs registered detectors against data, evaluates policy
+    rules, emits security events, and manages detectors at runtime.
     """
 
     def __init__(
@@ -47,32 +48,35 @@ class AgentGuard:
         execution_strategy: ExecutionStrategy | str = ExecutionStrategy.EXHAUSTIVE,
         event_callbacks: list[Callable[[SecurityEvent], Any]] | None = None,
     ) -> None:
-        """Initialize the guard with detectors and an optional policy.
+        """Initialize the guard.
+
+        Set the detectors, policy, and runtime options for the guard.
 
         Args:
             detectors (list[Detector]): Detector instances to run on each
-                inspect call. Required; may be empty to allow all traffic.
-            policy (Policy | None, optional): Policy used to map detections to
+                inspect call. Required. It can be empty to allow all traffic.
+            policy (Policy | None, optional): Policy that maps detections to
                 actions. Defaults to the built-in default policy.
-            fail_behavior (FailBehavior | str): How to handle execution errors:
-                ``"fail_open"`` allows traffic on errors, ``"fail_closed"``
-                blocks it. Defaults to ``FailBehavior.FAIL_OPEN``.
+            fail_behavior (FailBehavior | str): How to handle execution
+                errors. ``"fail_open"`` allows traffic on errors.
+                ``"fail_closed"`` blocks it. Defaults to
+                ``FailBehavior.FAIL_OPEN``.
             security_mode (SecurityMode | str): ``"enforce"`` applies policy
-                decisions, ``"monitor"`` logs without blocking. Defaults to
+                decisions. ``"monitor"`` logs without blocking. Defaults to
                 ``SecurityMode.ENFORCE``.
-            execution_strategy (ExecutionStrategy | str): ``"exhaustive"`` runs
-                all detectors, ``"fail_fast"`` stops at the first match or
-                failure. Defaults to ``ExecutionStrategy.EXHAUSTIVE``.
+            execution_strategy (ExecutionStrategy | str): ``"exhaustive"``
+                runs all detectors. ``"fail_fast"`` stops at the first match
+                or failure. Defaults to ``ExecutionStrategy.EXHAUSTIVE``.
             event_callbacks (list[Callable[[SecurityEvent], Any]] | None):
-                Callbacks invoked for each emitted security event.
+                Callbacks to run for each emitted security event.
 
         Raises:
-            TypeError: If ``detectors`` is not a list, if any detector does not
-                be a ``Detector``, if ``policy`` is invalid, or if
+            TypeError: If ``detectors`` is not a ``Detector`` or a list of
+                detectors, if ``policy`` is invalid, or if
                 ``event_callbacks`` contains non-callable objects.
             ValueError: If ``fail_behavior``, ``security_mode``, or
-                ``execution_strategy`` hold unrecognised values, or if duplicate
-                detector names are registered.
+                ``execution_strategy`` hold unrecognized values, or if
+                duplicate detector names are registered.
         """
 
         if isinstance(detectors, Detector):
@@ -148,15 +152,20 @@ class AgentGuard:
         execution_strategy: ExecutionStrategy | str = ExecutionStrategy.EXHAUSTIVE,
         event_callbacks: list[Callable[[SecurityEvent], Any]] | None = None,
     ) -> AgentGuard:
-        """Build an AgentGuard, optionally loading policy from a YAML file.
+        """Build an AgentGuard.
+
+        Optionally load the policy from a YAML file.
 
         Args:
-            detectors (list[Detector] | Detector): Detector instances. Required.
+            detectors (list[Detector] | Detector): Detector instances.
+                Required.
             policy (Policy | None, optional): Explicit policy object.
-            policy_path (str | Path | None, optional): Path to a YAML policy file.
+            policy_path (str | Path | None, optional): Path to a YAML policy
+                file.
             fail_behavior (FailBehavior | str): Error handling strategy.
-            security_mode (SecurityMode | str): Enforcement vs monitor mode.
-            execution_strategy (ExecutionStrategy | str): Detector run strategy.
+            security_mode (SecurityMode | str): Enforcement or monitor mode.
+            execution_strategy (ExecutionStrategy | str): Detector run
+                strategy.
             event_callbacks: Optional initial event callbacks.
 
         Returns:
@@ -180,14 +189,14 @@ class AgentGuard:
         )
 
     def register_detector(self, detector: Detector) -> None:
-        """Register a new detector at runtime.
+        """Register a detector at runtime.
 
         Args:
             detector (Detector): Detector to add.
 
         Raises:
-            TypeError: If ``detector`` is not a Detector.
-            ValueError: If a detector with the same name is already registered.
+            TypeError: If ``detector`` is not a ``Detector``.
+            ValueError: If a detector with the same name is registered.
         """
         if not isinstance(detector, Detector):
             msg = f"detector must be Detector, got {type(detector).__name__}"
@@ -265,13 +274,13 @@ class AgentGuard:
         operation: str,
         errors: list[Exception] | None = None,
     ) -> list[DetectionResult]:
-        """Execute all active detectors and collect matched results.
+        """Run all active detectors and collect the matched results.
 
         Args:
             key (str): Memory key under inspection.
-            value (Any): Payload to inspect.
+            value (Any): Data to inspect.
             operation (str): CRUD operation name.
-            errors (list[Exception] | None, optional): Accumulates any caught
+            errors (list[Exception] | None, optional): Collects any caught
                 detector execution exceptions.
 
         Returns:
@@ -307,14 +316,14 @@ class AgentGuard:
         emit_events: bool = False,
         request_metadata: dict[str, Any] | None = None,
     ) -> PolicyDecision:
-        """Inspect a payload and return the policy decision.
+        """Inspect data and return the policy decision.
 
         Args:
             key (str): Memory key under inspection.
-            value (Any): Payload to inspect.
+            value (Any): Data to inspect.
             operation (str): CRUD operation name.
-            source_class (SourceClass, optional): Provenance of the payload.
-            emit_events (bool, optional): Whether to emit security events.
+            source_class (SourceClass, optional): Provenance of the data.
+            emit_events (bool, optional): Emit security events.
             request_metadata (dict | None, optional): Extra context to attach
                 to emitted events.
 
@@ -341,14 +350,14 @@ class AgentGuard:
         emit_events: bool = False,
         request_metadata: dict[str, Any] | None = None,
     ) -> tuple[PolicyDecision, list[DetectionResult]]:
-        """Inspect a payload and return both the decision and detections.
+        """Inspect data and return the decision and detections.
 
         Args:
             key (str): Memory key under inspection.
-            value (Any): Payload to inspect.
+            value (Any): Data to inspect.
             operation (str): CRUD operation name.
-            source_class (SourceClass, optional): Provenance of the payload.
-            emit_events (bool, optional): Whether to emit detection security events.
+            source_class (SourceClass, optional): Provenance of the data.
+            emit_events (bool, optional): Emit detection security events.
             request_metadata (dict | None, optional): Extra context to attach
                 to emitted events.
 
@@ -357,7 +366,7 @@ class AgentGuard:
             matched detection results.
 
         Raises:
-            TypeError: If ``source_class`` is not a SourceClass enum member.
+            TypeError: If ``source_class`` is not a ``SourceClass`` member.
             PolicyEvaluationError: If policy evaluation fails and
                 ``fail_behavior`` is ``FAIL_CLOSED``.
         """
@@ -450,11 +459,11 @@ class AgentGuard:
         value: Any,
         operation: str,
     ):
-        """Convenience wrapper used by framework middleware adapters.
+        """Check data through a convenience wrapper.
 
-        Runs the full inspect-and-decide pipeline with event emission
-        enabled, matching the (key, value, operation) calling convention
-        used by AgentGuardMiddleware.
+        Run the full inspect-and-decide pipeline with event emission enabled.
+        This matches the ``(key, value, operation)`` calling convention used
+        by ``AgentGuardMiddleware``.
         """
         return self.inspect_with_results(
             key=key,
@@ -473,20 +482,20 @@ class AgentGuard:
         """Apply redaction transforms from all active detectors.
 
         Args:
-            value (Any): Payload to redact.
+            value (Any): Data to redact.
             severity_threshold (Severity | None, optional): Only apply
-                redactions from detectors whose highest match meets or exceeds
-                this severity. ``None`` applies all detectors.
+                redactions from detectors whose highest match meets or
+                exceeds this severity. ``None`` applies all detectors.
             detections (list[DetectionResult] | None, optional): Detection
-                results from a previous ``inspect`` call used to filter which
-                detectors should run their redactions.
+                results from a previous ``inspect`` call. Use them to
+                select which detectors run their redactions.
 
         Returns:
-            Any: Redacted payload after all applicable detector transforms.
+            Any: Redacted data after all applicable detector transforms.
 
         Raises:
-            RedactionError: If a detector redaction fails and ``fail_behavior``
-                is ``FAIL_CLOSED``.
+            RedactionError: If a detector redaction fails and
+                ``fail_behavior`` is ``FAIL_CLOSED``.
         """
         allowed: set[str] | None = None
         if severity_threshold is not None and detections is not None:
@@ -568,7 +577,7 @@ class AgentGuard:
         """Build, store, and broadcast a security event.
 
         Callbacks that raise are caught, reported to stderr, and logged as
-        CALLBACK_FAILURE events (without re-triggering callbacks).
+        ``CALLBACK_FAILURE`` events without re-triggering callbacks.
         """
         event = SecurityEvent(
             detector=detector,

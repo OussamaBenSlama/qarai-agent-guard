@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from qarai_agent_guard.core.exceptions import (
     ModelInferenceError,
     ModelLoadError,
 )
-from qarai_agent_guard.core.logger import logger
 from qarai_agent_guard.core.models.providers.base import ModelProvider
 from qarai_agent_guard.core.schemas.models import ModelConfig, ModelTask
+
+logger = logging.getLogger(__name__)
 
 _TASK_TO_PIPELINE_NAME: dict[ModelTask, str] = {
     ModelTask.TEXT_CLASSIFICATION: "text-classification",
@@ -19,13 +21,13 @@ _TASK_TO_PIPELINE_NAME: dict[ModelTask, str] = {
 
 
 class HuggingFaceProvider(ModelProvider):
-    """Thin HuggingFace loading and inference adapter.
+    """Load and run HuggingFace models with a thin adapter.
 
-    Contract: given a ``ModelConfig``, load the requested HF task/model via
-    ``transformers.pipeline()`` and return its raw output, unmodified.
+    Given a ``ModelConfig``, load the requested HF task/model via
+    ``transformers.pipeline()`` and return its raw output unmodified.
 
-    This provider deliberately does NOT normalize, reformat, or interpret
-    output. Output shaping (thresholding, custom formatters, converting to
+    This provider does not normalize, reformat, or interpret output. Output
+    shaping (thresholding, custom formatters, converting to
     ``ModelDetectionResult``) is the responsibility of ``InferenceEngine``.
     """
 

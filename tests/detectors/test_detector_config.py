@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
+from qarai_agent_guard import Detector
 from qarai_agent_guard.core.exceptions import ConfigurationError
-from qarai_agent_guard.core.schemas.detector import (
+from qarai_agent_guard.core.schemas import (
     CombinationStrategy,
     DefaultRules,
     DetectorType,

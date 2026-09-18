@@ -1,23 +1,22 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 
 from qarai_agent_guard.core.exceptions import ConfigurationError, ModelLoadError
-from qarai_agent_guard.core.logger import logger
-from qarai_agent_guard.core.models.providers import (
-    ModelProvider,
-    ModelProviderFactory,
-)
+from qarai_agent_guard.core.models.providers.base import ModelProvider
+from qarai_agent_guard.core.models.providers.factory import ModelProviderFactory
 from qarai_agent_guard.core.schemas.models import ModelConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ModelLoader:
-    """
-    Loads, caches, and manages the lifecycle of model providers.
+    """Load, cache, and manage the lifecycle of model providers.
 
-    Providers are cached according to their runtime model configuration so that
-    multiple detectors using the same model can reuse the same loaded provider.
+    Cache providers according to their runtime model configuration. Multiple
+    detectors that use the same model can reuse the same loaded provider.
     """
 
     def __init__(self) -> None:
@@ -26,11 +25,10 @@ class ModelLoader:
 
     @staticmethod
     def _key(config: ModelConfig) -> str:
-        """
-        Build a deterministic cache key for the loaded model provider.
+        """Build a deterministic cache key for the loaded model provider.
 
-        Only configuration that affects the loaded provider should participate
-        in the key. Detection-level settings such as threshold and output
+        Only configuration that affects the loaded provider participates in
+        the key. Detection-level settings such as threshold and output
         formatter must not create separate model instances.
         """
         if not isinstance(config, ModelConfig):
@@ -54,11 +52,10 @@ class ModelLoader:
             ) from exc
 
     def get(self, config: ModelConfig) -> ModelProvider:
-        """
-        Return a loaded provider for the given configuration.
+        """Return a loaded provider for the given configuration.
 
-        The provider is created and loaded lazily on first access. Providers
-        that fail to load are not added to the cache.
+        Create and load the provider lazily on first access. Providers that
+        fail to load are not added to the cache.
         """
         key = self._key(config)
 
@@ -88,11 +85,9 @@ class ModelLoader:
             return provider
 
     def release(self, config: ModelConfig) -> None:
-        """
-        Remove and unload the provider associated with ``config``.
+        """Remove and unload the provider associated with ``config``.
 
-        If no provider is cached for the configuration, this method does
-        nothing.
+        Do nothing when no provider is cached for the configuration.
         """
         key = self._key(config)
 
@@ -109,11 +104,10 @@ class ModelLoader:
             raise ModelLoadError(f"Failed to unload model '{config.model}'") from exc
 
     def clear(self) -> None:
-        """
-        Remove and unload all cached providers.
+        """Remove and unload all cached providers.
 
-        Every cached provider is given an opportunity to unload even if
-        another provider fails during cleanup.
+        Give every cached provider the chance to unload. A provider failure
+        does not stop the cleanup of the other providers.
         """
         with self._lock:
             providers = list(self._cache.values())

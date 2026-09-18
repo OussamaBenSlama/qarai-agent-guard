@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.schemas.guard import (
+from qarai_agent_guard import AgentGuard, Detector
+from qarai_agent_guard.core.schemas import (
     ExecutionStrategy,
     FailBehavior,
     SecurityMode,

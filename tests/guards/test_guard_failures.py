@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import pytest
 
+from qarai_agent_guard import AgentGuard
 from qarai_agent_guard.core.exceptions import PolicyEvaluationError
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.schemas.events import Action, EventType
-from qarai_agent_guard.core.schemas.guard import ExecutionStrategy, FailBehavior
+from qarai_agent_guard.core.schemas import (
+    Action,
+    EventType,
+    ExecutionStrategy,
+    FailBehavior,
+)
 
 from .conftest import CARD_PAYLOAD
 

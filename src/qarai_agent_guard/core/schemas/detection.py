@@ -15,7 +15,7 @@ PATTERNS_ROOT = Path(__file__).resolve().parent.parent / "detectors" / "patterns
 
 @dataclass(slots=True)
 class Match:
-    """Single regex match produced by a pattern rule.
+    """A regex match from a pattern rule.
 
     Attributes:
         pattern_id (str): Stable identifier of the matched rule.
@@ -32,10 +32,10 @@ class Match:
 
 @dataclass(slots=True)
 class DetectionResult:
-    """Outcome of a detector inspection against one payload.
+    """Result of a detector inspection against one payload.
 
     Attributes:
-        detector (str): Detector name that produced this result.
+        detector (str): Name of the detector that produced this result.
         matched (bool): Whether any pattern matched.
         message (str): Summary message when matched.
         matches (list[Match]): Individual pattern hits.

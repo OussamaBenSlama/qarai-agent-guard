@@ -1,3 +1,5 @@
+"""Model providers for qarai-agent-guard."""
+
 from qarai_agent_guard.core.models.providers.base import ModelProvider
 from qarai_agent_guard.core.models.providers.factory import ModelProviderFactory
 from qarai_agent_guard.core.models.providers.huggingface import HuggingFaceProvider

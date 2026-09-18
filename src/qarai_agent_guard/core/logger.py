@@ -1,9 +1,3 @@
-"""Central logger for qarai-agent-guard.
-
-All internal modules share this logger so that log output is formatted
-and controlled from a single, consistent place.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -22,7 +16,7 @@ def configure_logging(
 ) -> None:
     """Configure the central logger with a formatter and handler.
 
-    Defaults to a console handler at ``INFO`` level when no handler is given.
+    If no handler is given, it uses a console handler at ``INFO`` level.
     """
     if handler is None:
         handler = logging.StreamHandler()

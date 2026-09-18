@@ -1,9 +1,11 @@
 import pytest
 
-from qarai_agent_guard.core.models.config import resolve_default_model
-from qarai_agent_guard.core.models.engine import InferenceEngine
-from qarai_agent_guard.core.models.loader import ModelLoader
-from qarai_agent_guard.core.models.providers.huggingface import HuggingFaceProvider
+from qarai_agent_guard.core.models import (
+    HuggingFaceProvider,
+    InferenceEngine,
+    ModelLoader,
+    resolve_default_model,
+)
 
 
 @pytest.fixture(scope="session")

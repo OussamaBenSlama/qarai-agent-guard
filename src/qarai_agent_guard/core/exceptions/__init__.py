@@ -1,58 +1,72 @@
-from typing import Any
-
-
 class GuardError(Exception):
-    """Base exception for agent-guard errors."""
+    """Base exception for all agent-guard errors."""
 
 
 class ConfigurationError(GuardError, ValueError):
-    pass
+    """Raised when the guard configuration is invalid."""
 
 
 class ModelProviderError(GuardError):
-    pass
+    """Raised when a model provider operation fails."""
 
 
 class ModelLoadError(ModelProviderError):
-    pass
+    """Raised when the model cannot be loaded."""
 
 
 class ModelInferenceError(ModelProviderError):
-    pass
+    """Raised when model inference fails."""
 
 
 class ModelOutputError(ModelProviderError):
-    pass
+    """Raised when the model produces invalid output."""
 
 
 class ModelFormatterError(ModelProviderError):
-    pass
+    """Raised when model input or output formatting fails."""
 
 
 class DetectorExecutionError(GuardError):
-    pass
+    """Raised when a detector fails during execution."""
 
 
 class PolicyEvaluationError(GuardError):
-    pass
+    """Raised when policy evaluation fails."""
 
 
 class RedactionError(GuardError):
-    pass
+    """Raised when content redaction fails."""
 
 
 class AgentGuardViolation(GuardError):
-    """Raised when AgentGuard policy enforcement blocks or quarantines content."""
+    """Raised when AgentGuard blocks or quarantines content."""
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        source: str | None = None,
-        decision: Any | None = None,
-        content: Any = None,
-    ) -> None:
-        super().__init__(message)
-        self.source = source
-        self.decision = decision
-        self.content = content
+
+class PatternLoaderError(ValueError):
+    """Raised when a pattern file is invalid or cannot be processed."""
+
+
+class PolicyLoaderError(ValueError):
+    """Raised when a policy file is invalid or cannot be parsed."""
+
+
+class StringifyError(ValueError):
+    """Raised when a value cannot be converted to text safely."""
+
+
+__all__ = [
+    "AgentGuardViolation",
+    "ConfigurationError",
+    "DetectorExecutionError",
+    "GuardError",
+    "ModelFormatterError",
+    "ModelInferenceError",
+    "ModelLoadError",
+    "ModelOutputError",
+    "ModelProviderError",
+    "PatternLoaderError",
+    "PolicyEvaluationError",
+    "PolicyLoaderError",
+    "RedactionError",
+    "StringifyError",
+]

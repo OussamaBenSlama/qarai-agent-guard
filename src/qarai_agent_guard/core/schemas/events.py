@@ -18,7 +18,7 @@ class Severity(StrEnum):
 
 
 class Action(StrEnum):
-    """Policy actions that can be applied to a guarded operation."""
+    """Policy actions that can apply to a guarded operation."""
 
     ALLOW = "allow"
     WARN = "warn"

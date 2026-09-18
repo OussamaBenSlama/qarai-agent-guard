@@ -5,13 +5,13 @@ from typing import Any
 
 import pytest
 
-from qarai_agent_guard.core.detectors import Detector
-from qarai_agent_guard.core.loaders.pattern_loader import PatternLoader
-from qarai_agent_guard.core.schemas.detection import PATTERNS_ROOT
-from qarai_agent_guard.core.schemas.events import Severity
-from qarai_agent_guard.core.schemas.models import (
+from qarai_agent_guard import Detector
+from qarai_agent_guard.core.loaders import PatternLoader
+from qarai_agent_guard.core.schemas import (
+    PATTERNS_ROOT,
     ModelConfig,
     ModelDetectionResult,
+    Severity,
 )
 
 
@@ -217,7 +217,6 @@ def model_result_with_entities():
 @pytest.fixture
 def pii_detector():
     """Provides a detector configured with the default PII rules."""
-    from qarai_agent_guard.core.detectors.detector import Detector
 
     return Detector(default_rules="pii")
 
@@ -225,7 +224,6 @@ def pii_detector():
 @pytest.fixture
 def secrets_detector():
     """Provides a detector configured with the default secrets rules."""
-    from qarai_agent_guard.core.detectors.detector import Detector
 
     return Detector(default_rules="secrets")
 
@@ -233,22 +231,17 @@ def secrets_detector():
 @pytest.fixture
 def prompt_injection_detector():
     """Provides a detector configured with the default prompt-injection rules."""
-    from qarai_agent_guard.core.detectors.detector import Detector
 
     return Detector(default_rules="prompt_injection")
 
 
 @pytest.fixture
 def fr_prompt_injection_detector():
-    from qarai_agent_guard.core.detectors.detector import Detector
-
     return Detector(default_rules="prompt_injection", lang="fr")
 
 
 @pytest.fixture
 def ar_prompt_injection_detector():
-    from qarai_agent_guard.core.detectors.detector import Detector
-
     return Detector(default_rules="prompt_injection", lang="ar")
 
 
@@ -259,7 +252,6 @@ def model_detector(
     model_result,
 ):
     """Provides a model detector paired with its fake inference engine."""
-    from qarai_agent_guard.core.detectors.detector import Detector
 
     engine = fake_engine(model_result(False))
 
@@ -308,7 +300,6 @@ def mixed_prompt_injection_detector(
     model_result,
 ):
     """Provides a mixed detector combining real prompt-injection rules with a model."""
-    from qarai_agent_guard.core.detectors.detector import Detector
 
     def _build(
         detected: bool,
@@ -341,7 +332,6 @@ def precedence_detector(
     Provides a mixed detector fixed to precedence strategy
     for targeted assertions.
     """
-    from qarai_agent_guard.core.detectors.detector import Detector
 
     def _build(model_detected: bool):
         engine = fake_engine(model_result(model_detected))

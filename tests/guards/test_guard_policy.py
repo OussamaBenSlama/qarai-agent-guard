@@ -4,20 +4,22 @@ from pathlib import Path
 
 import pytest
 
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.loaders.policy_loader import PolicyLoader, PolicyLoaderError
-from qarai_agent_guard.core.policies.base import (
+from qarai_agent_guard import (
+    AgentGuard,
+    PolicyLoader,
     SeverityPolicy,
-    SeverityRule,
-    severity_rule_from_mapping,
-)
-from qarai_agent_guard.core.policies.defaults import (
     default_policy,
     permissive_policy,
     strict_policy,
 )
-from qarai_agent_guard.core.schemas.events import Action, Severity
-from qarai_agent_guard.core.schemas.policy import PolicyDecision
+from qarai_agent_guard.core.exceptions import PolicyLoaderError
+from qarai_agent_guard.core.policies import severity_rule_from_mapping
+from qarai_agent_guard.core.schemas import (
+    Action,
+    PolicyDecision,
+    Severity,
+    SeverityRule,
+)
 
 from .conftest import (
     CARD_PAYLOAD,

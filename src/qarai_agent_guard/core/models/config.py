@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from qarai_agent_guard.core.schemas.detector import DefaultRules
-from qarai_agent_guard.core.schemas.events import Severity
-from qarai_agent_guard.core.schemas.models import (
+from qarai_agent_guard.core.schemas import (
+    DefaultRules,
     ModelConfig,
-    ModelDetectionResult,
+    Severity,
 )
+from qarai_agent_guard.core.schemas.models import ModelDetectionResult
 
 
 def resolve_default_model(
@@ -15,10 +15,10 @@ def resolve_default_model(
 ) -> ModelConfig | None:
     """Resolve the default model configuration for a rule set.
 
-    Maps supported library rule sets to their corresponding model
-    configuration. The resolved configuration includes the model provider,
-    model identifier, detection threshold, and output formatter required to
-    normalize the model response.
+    Map supported library rule sets to their corresponding model
+    configuration. The configuration includes the model provider, model
+    identifier, detection threshold, and output formatter. The formatter
+    normalizes the model response.
 
     Currently, model-backed defaults are provided for:
 
@@ -30,22 +30,22 @@ def resolve_default_model(
     Parameters
     ----------
     default_rules:
-        Rule set for which a default model should be resolved. Both
+        The rule set for which to resolve a default model. Both
         :class:`DefaultRules` values and their string representations are
         accepted.
 
     Returns
     -------
     ModelConfig | None
-        The default model configuration for the requested rule set, or
+        The default model configuration for the requested rule set. Return
         ``None`` when no model is associated with the rule set or when
         ``default_rules`` is invalid.
 
     Notes
     -----
-    Invalid rule values are intentionally treated as unresolved defaults
-    rather than raising an exception. Configuration validation is handled
-    by the detector layer.
+    Invalid rule values are treated as unresolved defaults. They do not
+    raise an exception. The detector layer handles configuration
+    validation.
     """
     if default_rules is None:
         return None
@@ -87,8 +87,8 @@ def _format_default_injection(
     ``task="text-classification"``:
     ``{"label": str, "score": float}``.
 
-    A result is considered a detection when the predicted label belongs to a
-    known injection class and the score meets ``config.threshold``.
+    A result is a detection when the predicted label belongs to a known
+    injection class and the score meets ``config.threshold``.
     """
     item = raw[0] if isinstance(raw, list) and raw else raw
 
@@ -123,8 +123,8 @@ def _format_default_pii(
     for ``task="token-classification"``.
 
     Each entity dict has at minimum ``"entity"`` (or ``"entity_group"``)
-    and ``"score"`` keys.  Entities whose score is below ``config.threshold``
-    or whose label is ``"O"`` are discarded.
+    and ``"score"`` keys. Discard entities whose score is below
+    ``config.threshold`` or whose label is ``"O"``.
     """
     if not isinstance(raw, list):
         raise ValueError("expected a list of token-classification entity dicts")

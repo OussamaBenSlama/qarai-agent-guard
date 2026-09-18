@@ -1,42 +1,37 @@
-from qarai_agent_guard.core.detectors.detector import Detector
+"""qarai-agent-guard: secure AI systems toolkit.
+
+The package exposes its foundation API at the top level:
+
+    from qarai_agent_guard import AgentGuard, Detector, SeverityPolicy
+
+Import schemas, exceptions, and helpers from the core sub-packages:
+
+    from qarai_agent_guard.core.schemas import Action, DetectionResult
+    from qarai_agent_guard.core.exceptions import ConfigurationError
+    from qarai_agent_guard.core.helpers import parse_severity
+"""
+
+from qarai_agent_guard.core.detectors import Detector
 from qarai_agent_guard.core.exceptions import AgentGuardViolation
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.loaders.policy_loader import PolicyLoader, PolicyLoaderError
-from qarai_agent_guard.core.policies.base import (
+from qarai_agent_guard.core.guards import AgentGuard
+from qarai_agent_guard.core.loaders import PolicyLoader
+from qarai_agent_guard.core.policies import (
     Policy,
-    PolicyDecision,
+    PolicyExecutor,
     SeverityPolicy,
-    SeverityRule,
-)
-from qarai_agent_guard.core.policies.defaults import (
     default_policy,
     permissive_policy,
     strict_policy,
 )
-from qarai_agent_guard.core.policies.enforcement import PolicyExecutor
-from qarai_agent_guard.core.schemas.detector import DefaultRules, DetectorType
-from qarai_agent_guard.core.schemas.events import Action, Severity
-from qarai_agent_guard.core.schemas.guard import SecurityMode
-from qarai_agent_guard.core.schemas.models import ModelConfig, ModelDetectionResult
-from qarai_agent_guard.core.schemas.policy import EnforcementResult
+from qarai_agent_guard.core.schemas import SeverityRule
 
 __all__ = [
-    "Action",
     "AgentGuard",
     "AgentGuardViolation",
-    "DefaultRules",
     "Detector",
-    "DetectorType",
-    "EnforcementResult",
-    "ModelConfig",
-    "ModelDetectionResult",
     "Policy",
-    "PolicyDecision",
     "PolicyExecutor",
     "PolicyLoader",
-    "PolicyLoaderError",
-    "SecurityMode",
-    "Severity",
     "SeverityPolicy",
     "SeverityRule",
     "default_policy",

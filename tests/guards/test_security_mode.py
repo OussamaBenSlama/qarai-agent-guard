@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.schemas.events import Action
-from qarai_agent_guard.core.schemas.guard import SecurityMode
+from qarai_agent_guard import AgentGuard
+from qarai_agent_guard.core.schemas import Action, SecurityMode
 
 from .conftest import (
     CARD_PAYLOAD,

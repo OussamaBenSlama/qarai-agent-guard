@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.policies.enforcement import PolicyExecutor
+from qarai_agent_guard import AgentGuard, Detector, PolicyExecutor
 
 SAFE_PAYLOAD = "What is machine learning and how does it differ from deep learning?"
 PII_PAYLOAD = "Contact oussama@test.com to schedule the demo."

@@ -4,8 +4,8 @@ import re
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
-from qarai_agent_guard.core.schemas.detection import PATTERNS_ROOT
+from qarai_agent_guard import Detector
+from qarai_agent_guard.core.schemas import PATTERNS_ROOT
 
 # Rule source resolution
 

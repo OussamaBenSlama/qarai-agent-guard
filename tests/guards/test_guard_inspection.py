@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.schemas.events import Action, SourceClass
+from qarai_agent_guard import AgentGuard, Detector
+from qarai_agent_guard.core.schemas import Action, SourceClass
 
 from .conftest import (
     AR_PROMPT_INJECTION_PAYLOAD,
@@ -72,7 +71,7 @@ def test_fail_fast_stops_after_first_match(pii_detector, secrets_detector):
     logging_pii = LoggingWrapper(pii_detector)
     logging_secrets = LoggingWrapper(secrets_detector)
 
-    from qarai_agent_guard.core.schemas.guard import ExecutionStrategy
+    from qarai_agent_guard.core.schemas import ExecutionStrategy
 
     guard = AgentGuard(
         detectors=[logging_pii, logging_secrets],

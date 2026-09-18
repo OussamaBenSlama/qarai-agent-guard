@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import pytest
 
+from qarai_agent_guard import AgentGuard
 from qarai_agent_guard.core.exceptions import RedactionError
-from qarai_agent_guard.core.guards.agent_guard import AgentGuard
-from qarai_agent_guard.core.schemas.detection import DetectionResult, Match
-from qarai_agent_guard.core.schemas.events import Severity
-from qarai_agent_guard.core.schemas.guard import FailBehavior
-from qarai_agent_guard.core.schemas.models import ModelDetectionResult
+from qarai_agent_guard.core.schemas import (
+    DetectionResult,
+    FailBehavior,
+    Match,
+    ModelDetectionResult,
+    Severity,
+)
 
 from .conftest import (
     AWS_KEY_SAMPLE,

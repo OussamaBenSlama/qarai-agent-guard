@@ -2,13 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from qarai_agent_guard.core.detectors.detector import Detector
-from qarai_agent_guard.core.schemas.events import Severity
-from qarai_agent_guard.core.schemas.models import ModelDetectionResult
-
-# ---------------------------------------------------------------------------
-# Regex detection
-# ---------------------------------------------------------------------------
+from qarai_agent_guard import Detector
+from qarai_agent_guard.core.schemas import ModelDetectionResult, Severity
 
 
 @pytest.mark.parametrize(

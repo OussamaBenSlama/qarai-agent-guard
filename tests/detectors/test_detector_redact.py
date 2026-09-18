@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from qarai_agent_guard.core.schemas.detection import DetectionResult
-from qarai_agent_guard.core.schemas.events import Severity
-from qarai_agent_guard.core.schemas.models import ModelDetectionResult
+from qarai_agent_guard.core.schemas import (
+    DetectionResult,
+    ModelDetectionResult,
+    Severity,
+)
 
 # Regex redaction
 

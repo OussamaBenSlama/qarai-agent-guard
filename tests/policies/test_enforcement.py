@@ -6,14 +6,12 @@ from typing import Any
 import pytest
 
 from qarai_agent_guard import (
-    Action,
     AgentGuard,
     AgentGuardViolation,
-    PolicyDecision,
     PolicyExecutor,
 )
 from qarai_agent_guard.core.exceptions import GuardError
-from qarai_agent_guard.core.schemas.detection import DetectionResult
+from qarai_agent_guard.core.schemas import Action, DetectionResult, PolicyDecision
 
 from .conftest import (
     PII_PAYLOAD,

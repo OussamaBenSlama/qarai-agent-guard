@@ -17,23 +17,23 @@ class ModelProviderName(StrEnum):
 class ModelTask(StrEnum):
     """Supported HuggingFace task types.
 
-    The value is the canonical task string passed to the underlying
+    The value is the canonical task string for the underlying
     AutoModel class selector.
 
     Attributes
     ----------
     TEXT_CLASSIFICATION:
         Sequence-level classification (e.g. prompt-injection detection).
-        Loaded with ``AutoModelForSequenceClassification``.
+        AutoModelForSequenceClassification loads it.
     TOKEN_CLASSIFICATION:
-        Token-level labelling (e.g. PII / NER).
-        Loaded with ``AutoModelForTokenClassification``.
+        Token-level labeling (e.g. PII / NER).
+        AutoModelForTokenClassification loads it.
     TEXT_GENERATION:
-        Causal language modelling.
-        Loaded with ``AutoModelForCausalLM``.
+        Causal language modeling.
+        AutoModelForCausalLM loads it.
     TEXT2TEXT_GENERATION:
         Encoder-decoder generation (e.g. T5, BART).
-        Loaded with ``AutoModelForSeq2SeqLM``.
+        AutoModelForSeq2SeqLM loads it.
     """
 
     TEXT_CLASSIFICATION = "text-classification"
@@ -49,35 +49,34 @@ class ModelConfig:
     Parameters
     ----------
     provider:
-        Model hosting provider. Currently only ``"huggingface"`` is supported.
+        Model hosting provider. Currently supports only ``"huggingface"``.
     model:
         Model identifier (e.g. a HuggingFace Hub repo name or local path).
     task:
-        Task type that determines which ``AutoModel*`` class is loaded.
+        Task type that selects the ``AutoModel*`` class to load.
         Accepts a :class:`ModelTask` value or its string equivalent.
         Defaults to ``"text-classification"``.
     threshold:
-        Confidence threshold in ``[0, 1]`` used by the default output
-        formatter when interpreting raw confidence scores.
+        Confidence threshold in ``[0, 1]``.
+        The default output formatter uses it to interpret raw confidence scores.
     hf_access_token:
         Optional HuggingFace Hub access token for private models.
     api_key:
         Optional API key (reserved for future providers).
     output_formatter:
-        Optional callable ``(raw_output, config) -> ModelDetectionResult``
-        used to convert the provider's raw output into a detection result.
+        Optional callable ``(raw_output, config) -> ModelDetectionResult``.
+        It converts the provider's raw output into a detection result.
     model_options:
-        Keyword arguments forwarded to ``AutoModel*.from_pretrained()``.
+        Keyword arguments for ``AutoModel*.from_pretrained()``.
     tokenizer_options:
-        Keyword arguments forwarded to ``AutoTokenizer.from_pretrained()``.
+        Keyword arguments for ``AutoTokenizer.from_pretrained()``.
     inference_options:
-        Keyword arguments forwarded to the model's ``__call__`` / ``generate``
+        Keyword arguments for the model's ``__call__`` / ``generate``
         invocation at inference time.
     options:
-        *Deprecated.* Previously a single bag of miscellaneous options.
-        Values are migrated to ``inference_options`` automatically during
-        initialisation. A :class:`DeprecationWarning` is emitted when this
-        field is supplied.
+        *Deprecated.* Use ``inference_options`` instead.
+        Values migrate to ``inference_options`` automatically during
+        initialization. Supplying this field emits a :class:`DeprecationWarning`.
     """
 
     provider: ModelProviderName | str

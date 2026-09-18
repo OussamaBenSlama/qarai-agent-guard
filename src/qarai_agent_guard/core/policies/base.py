@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from qarai_agent_guard.core.helpers.detection_utils import (
+from qarai_agent_guard.core.helpers import (
     highest_result_severity,
     highest_results_severity,
     parse_severity,
 )
-from qarai_agent_guard.core.schemas.detection import DetectionResult
-from qarai_agent_guard.core.schemas.events import Action, Severity
-from qarai_agent_guard.core.schemas.policy import PolicyDecision, SeverityRule
+from qarai_agent_guard.core.schemas import (
+    Action,
+    DetectionResult,
+    PolicyDecision,
+    Severity,
+    SeverityRule,
+)
 
 
 class Policy(Protocol):
@@ -19,7 +23,7 @@ class Policy(Protocol):
         self,
         results: list[DetectionResult],
     ) -> PolicyDecision:
-        """Evaluate detection results and return a policy decision.
+        """Evaluate a set of detection results.
 
         Args:
             results (list[DetectionResult]): Matched detection results.
@@ -34,8 +38,9 @@ class Policy(Protocol):
 class SeverityPolicy:
     """Map the highest matched pattern severity to a policy action.
 
-    Walks ordered severity rules and falls back to a configured default when
-    no rule matches the highest detected severity.
+    Walk the ordered rules.
+    Fall back to the configured default when no rule matches the highest
+    detected severity.
     """
 
     def __init__(
@@ -142,10 +147,10 @@ class SeverityPolicy:
 
 
 class DefaultPolicy(SeverityPolicy):
-    """Built-in policy used when no custom policy is supplied.
+    """Block high and critical matches.
 
-    Blocks high and critical matches, redacts medium matches, and warns on
-    low and info severities.
+    Redact medium matches. Warn on low and info severities.
+    Use this policy when no custom policy is supplied.
     """
 
     def __init__(self) -> None:
@@ -176,8 +181,8 @@ def severity_rule_from_mapping(
     """Build a SeverityRule from a YAML policy rule mapping.
 
     Args:
-        mapping (dict[str, Any]): Rule mapping with ``severities`` and
-            ``action`` keys. Required.
+        mapping (dict[str, Any]): Rule mapping.
+            It contains the ``severities`` and ``action`` keys. Required.
 
     Returns:
         SeverityRule: Parsed severity rule.

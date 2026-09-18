@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from qarai_agent_guard.core.exceptions import StringifyError
+
 DEFAULT_MAX_DEPTH = 50
-
-
-class StringifyError(ValueError):
-    """Raised when a value cannot be safely converted to text."""
 
 
 def _stringify(
@@ -18,22 +16,22 @@ def _stringify(
 ) -> str:
     """Convert arbitrary values into a flat string for pattern matching.
 
-    Recursively stringifies collections and mappings so detectors can scan
-    structured payloads consistently.
+    Convert collections and mappings recursively. The detectors use the
+    result to scan structured payloads consistently.
 
     Args:
         value (Any): Value to convert. Required.
-        _max_depth (int): Maximum recursion depth allowed for nested
-            collections/mappings. Guards against circular references and
-            excessively deep or maliciously crafted payloads.
+        _max_depth (int): Maximum recursion depth for nested collections
+            and mappings. The limit prevents circular references and
+            excessively deep or malicious payloads.
 
     Returns:
-        str: String representation suitable for regex inspection.
+        str: The string representation for regex inspection.
 
     Raises:
-        StringifyError: If ``value`` contains a circular reference, exceeds
-            ``_max_depth``, or contains an object whose ``__str__``/
-            ``__repr__`` raises.
+        StringifyError: If ``value`` contains a circular reference or
+            exceeds ``_max_depth``. The error also occurs when the
+            ``__str__`` or ``__repr__`` of an object raises.
     """
     if _seen is None:
         _seen = set()
