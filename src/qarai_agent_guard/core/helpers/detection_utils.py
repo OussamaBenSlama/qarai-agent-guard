@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from qarai_agent_guard.core.schemas.detection import (
     LANGUAGE_ALIASES,
     DetectionResult,
