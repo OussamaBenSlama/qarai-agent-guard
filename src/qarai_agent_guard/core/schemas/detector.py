@@ -17,3 +17,8 @@ class CombinationStrategy(StrEnum):
     ANY = "any"
     ALL = "all"
     PRECEDENCE = "precedence"
+
+
+class RuleStrategy(StrEnum):
+    PRECEDENCE = "precedence"
+    EXTEND = "extend"

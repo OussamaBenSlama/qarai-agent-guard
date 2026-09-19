@@ -77,7 +77,7 @@ source = "uv-dynamic-versioning"
 [tool.uv-dynamic-versioning]
 vcs = "git"
 style = "pep440"
-pattern = "v(?P<base>\\d+\\.\\d+\\.\\d+)"
+pattern = "^v(?P<base>\\d+\\.\\d+\\.\\d+)$"
 fallback-version = "0.0.0"
 
 

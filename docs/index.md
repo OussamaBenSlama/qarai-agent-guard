@@ -4,10 +4,10 @@
   <img src="assets/logo_qarai_agent_guard.png" alt="qarai agent guard logo" width="300" height="auto">
 </div>
 
+**Qarai Agent Guard** is a Python library that protects AI agents from security threats.
+It inspects data before an agent reads it, stores it, or sends it to a tool.
 
-**Qarai Agent Guard** is a lightweight toolkit for building secure AI systems with built-in security middleware, protected memory, and AI safety models.
-
-It helps detect and handle common threats such as:
+The library detects these threats:
 
 - Prompt injection
 - Jailbreak attempts
@@ -15,40 +15,129 @@ It helps detect and handle common threats such as:
 - XML-based attacks
 - Secrets exposure
 
-The library also supports model-based reasoning detection for **English, Arabic, and French**.
+The library supports three detection modes:
 
-## Quick Start
+- Regex-based detection
+- Model-based detection
+- Mixed detection
 
-```python
-from qarai_agent_guard import AgentGuard
+The library ships detection rules for three languages:
 
-guard = AgentGuard()
+- English
+- French
+- Arabic
 
-result = guard.inspect(
-    key="user_input",
-    value="Hello, how are you?",
-    operation="input"
-)
 
-print(result)
+## How it works
+
+An application sends a value to `AgentGuard`.
+The guard passes the value to its detectors.
+Each detector returns a detection result when a rule or model matches.
+The policy maps the result to an action.
+The application receives the action and reacts to it.
+
+The main components are:
+
+| Component | Role |
+| --- | --- |
+| `AgentGuard` | Central security engine. It runs detectors and applies policy decisions. |
+| `Detector` | Identifies a class of threat in a value. |
+| `Policy` | Maps detection severities to actions. |
+| `PolicyExecutor` | Applies a policy decision to content. |
+
+
+## Quick start
+
+Install the library:
+
+```bash
+pip install qarai-agent-guard
 ```
 
-## Main Components
+Create a guard with one detector and the default policy:
 
-- **AgentGuard** — central security engine.
-- **Detectors** — identify security threats.
-- **Policies** — define how findings are handled.
-- **Patterns** — configure reusable detection rules.
-- **Monitoring** — observe security events at runtime.
-- **Integrations** — connect the guard to agent frameworks such as LangChain and CrewAI.
+```python
+from qarai_agent_guard import AgentGuard, Detector, default_policy
 
-## Documentation
+pii_detector = Detector(name="pii", default_rules="pii")
 
-Use the navigation menu to explore:
+guard = AgentGuard(
+    detectors=[pii_detector],
+    policy=default_policy(),
+)
+```
 
-- [Architecture & Core Concepts](architecture.md)
-- [Examples & Recipes](examples.md)
-- [Policies and Actions](policy.md)
-- [Detection Patterns](detection-patterns.md)
-- [Security Modes & Runtime Behaviour](security-mode-runtime-behaviour.md)
+Inspect a value that contains an IBAN:
 
+```python
+decision = guard.inspect(
+    key="memory",
+    value="Please store IBAN FR1420041010050500013M02606 on file for client Amine Trabelsi.",
+    operation="write",
+)
+
+print(decision.action)   # Action.REDACT
+print(decision.reason)   # PII pattern detected in 'memory'
+```
+
+The default policy redacts medium-severity matches.
+The IBAN has medium severity, so the guard returns the `REDACT` action.
+
+Inspect a value that contains a card number:
+
+```python
+decision = guard.inspect(
+    key="card",
+    value="Cardholder Yassine Gharbi paid with card 4111 1111 1111 1111.",
+    operation="write",
+)
+
+print(decision.action)   # Action.BLOCK
+```
+
+The card number has critical severity.
+The default policy returns the `BLOCK` action for critical severity.
+
+Remove sensitive data from a value:
+
+```python
+redacted = guard.apply_redactions(
+    "Contact jhon.smith@google.com to schedule the demo."
+)
+
+print(redacted)
+# Contact [REDACTED:email] to schedule the demo.
+```
+
+## Documentation structure
+
+Read the pages in this order:
+
+| Page | What it covers |
+| --- | --- |
+| [Architecture & Core Concepts](architecture.md) | The design of the library. |
+| [Agent Guard](agent-guard.md) | The `AgentGuard` engine, its parameters, and its methods. |
+| [Detectors](detectors.md) | The `Detector` class, all detection modes, and rule resolution. |
+| [Model-Based Detection](models.md) | `ModelConfig`, providers, tasks, and output formatters. |
+| [Policies and Actions](policy.md) | Severities, actions, built-in policies, and custom policies. |
+| [Detection Patterns](patterns.md) | The pattern file format and the built-in rule sets. |
+| [Security Modes & Runtime Behaviour](runtime.md) | Security modes, fail behavior, and execution strategy. |
+| [Events and Callbacks](events.md) | `SecurityEvent`, event types, and monitoring. |
+| [Exceptions](exceptions.md) | The exception taxonomy of the library. |
+| [Examples and Recipes](examples.md) | Real examples with expected output. |
+
+## Terminology
+
+Use these terms with their exact meaning throughout this documentation:
+
+| Term | Meaning |
+| --- | --- |
+| Value | The data sent to the guard for inspection. |
+| Rule | A single regex detection pattern with a severity. |
+| Pattern | The regex expression inside a rule. |
+| Match | A rule that found a hit in the value. |
+| Detection | A matched rule or a model detection. |
+| Severity | The importance of a match. |
+| Action | The guard response to a severity. |
+| Decision | The policy outcome for a set of detections. |
+| Event | A structured record of a guard decision. |

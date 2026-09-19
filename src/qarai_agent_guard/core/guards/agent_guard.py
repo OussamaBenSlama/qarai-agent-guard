@@ -312,7 +312,7 @@ class AgentGuard:
         key: str,
         value: Any,
         operation: str,
-        source_class: SourceClass = SourceClass.UNKNOWN,
+        source_class: SourceClass | str = SourceClass.UNKNOWN,
         emit_events: bool = False,
         request_metadata: dict[str, Any] | None = None,
     ) -> PolicyDecision:
@@ -322,7 +322,8 @@ class AgentGuard:
             key (str): Memory key under inspection.
             value (Any): Data to inspect.
             operation (str): CRUD operation name.
-            source_class (SourceClass, optional): Provenance of the data.
+            source_class (SourceClass | str, optional): Provenance of the
+                data. Accepts a ``SourceClass`` member or its string value.
             emit_events (bool, optional): Emit security events.
             request_metadata (dict | None, optional): Extra context to attach
                 to emitted events.
@@ -346,7 +347,7 @@ class AgentGuard:
         key: str,
         value: Any,
         operation: str,
-        source_class: SourceClass = SourceClass.UNKNOWN,
+        source_class: SourceClass | str = SourceClass.UNKNOWN,
         emit_events: bool = False,
         request_metadata: dict[str, Any] | None = None,
     ) -> tuple[PolicyDecision, list[DetectionResult]]:
@@ -356,7 +357,8 @@ class AgentGuard:
             key (str): Memory key under inspection.
             value (Any): Data to inspect.
             operation (str): CRUD operation name.
-            source_class (SourceClass, optional): Provenance of the data.
+            source_class (SourceClass | str, optional): Provenance of the
+                data. Accepts a ``SourceClass`` member or its string value.
             emit_events (bool, optional): Emit detection security events.
             request_metadata (dict | None, optional): Extra context to attach
                 to emitted events.
@@ -366,13 +368,22 @@ class AgentGuard:
             matched detection results.
 
         Raises:
-            TypeError: If ``source_class`` is not a ``SourceClass`` member.
+            TypeError: If ``source_class`` is not a ``SourceClass`` member
+                or one of its string values.
             PolicyEvaluationError: If policy evaluation fails and
                 ``fail_behavior`` is ``FAIL_CLOSED``.
         """
         self._validate_key(key)
         self._validate_operation(operation)
-        if not isinstance(source_class, SourceClass):
+        if isinstance(source_class, SourceClass):
+            pass
+        elif isinstance(source_class, str):
+            try:
+                source_class = SourceClass(source_class)
+            except ValueError:
+                msg = f"source_class must be SourceClass, got {source_class!r}"
+                raise TypeError(msg)
+        else:
             msg = f"source_class must be SourceClass, got {type(source_class).__name__}"
             raise TypeError(msg)
 
@@ -476,16 +487,17 @@ class AgentGuard:
         self,
         value: Any,
         *,
-        severity_threshold: Severity | None = None,
+        severity_threshold: Severity | str | None = None,
         detections: list[DetectionResult] | None = None,
     ) -> Any:
         """Apply redaction transforms from all active detectors.
 
         Args:
             value (Any): Data to redact.
-            severity_threshold (Severity | None, optional): Only apply
+            severity_threshold (Severity | str | None, optional): Only apply
                 redactions from detectors whose highest match meets or
-                exceeds this severity. ``None`` applies all detectors.
+                exceeds this severity. Accepts a ``Severity`` member or its
+                string value. ``None`` applies all detectors.
             detections (list[DetectionResult] | None, optional): Detection
                 results from a previous ``inspect`` call. Use them to
                 select which detectors run their redactions.
@@ -498,6 +510,10 @@ class AgentGuard:
                 ``fail_behavior`` is ``FAIL_CLOSED``.
         """
         allowed: set[str] | None = None
+        if severity_threshold is not None:
+            severity_threshold = self._coerce_enum(
+                severity_threshold, Severity, "severity_threshold"
+            )
         if severity_threshold is not None and detections is not None:
             severity_order = [s for s in Severity]
             threshold_idx = severity_order.index(severity_threshold)

@@ -357,7 +357,7 @@ def support_ticket_text() -> str:
     """Provides support-ticket text containing representative PII values."""
     return (
         "Hi team, my name is Sarah Connor and my account email is "
-        "sarah.connor@cyberdyne.com. Please call me back at "
+        "jhon.smith@google.com. Please call me back at "
         "+14155552671 to confirm the refund."
     )
 

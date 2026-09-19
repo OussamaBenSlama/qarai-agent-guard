@@ -10,7 +10,7 @@ from qarai_agent_guard.core.schemas import DetectionResult
 IBAN_SAMPLE = "FR1420041010050500013M02606"
 CARD_SAMPLE = "4111 1111 1111 1111"
 AWS_KEY_SAMPLE = "AKIAIOSFODNN7EXAMPLE"
-EMAIL_SAMPLE = "sarah.connor@cyberdyne.com"
+EMAIL_SAMPLE = "jhon.smith@google.com"
 
 IBAN_PAYLOAD = f"Please store IBAN {IBAN_SAMPLE} on file for client Amine Trabelsi."
 CARD_PAYLOAD = f"Cardholder Yassine Gharbi paid with card {CARD_SAMPLE}."

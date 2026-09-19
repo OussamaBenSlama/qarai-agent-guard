@@ -20,6 +20,7 @@ from qarai_agent_guard.core.schemas.detector import (
     CombinationStrategy,
     DefaultRules,
     DetectorType,
+    RuleStrategy,
 )
 from qarai_agent_guard.core.schemas.models import ModelConfig, ModelDetectionResult
 
@@ -93,7 +94,7 @@ class Detector:
 
     rule_strategy:
         Determines how explicitly provided rules and library defaults are
-        resolved.
+        resolved. Accepts a :class:`RuleStrategy` member or its string value.
 
         ``"precedence"``
             Explicit rules take precedence. Inline ``patterns`` are preferred
@@ -138,7 +139,7 @@ class Detector:
         detector_type: DetectorType | str = DetectorType.REGEX,
         default_rules: DefaultRules | str | None = None,
         model: ModelConfig | None = None,
-        rule_strategy: str = "precedence",
+        rule_strategy: RuleStrategy | str = RuleStrategy.PRECEDENCE,
         combination_strategy: CombinationStrategy | str = CombinationStrategy.ANY,
         inference_engine: InferenceEngine | None = None,
     ) -> None:
@@ -170,7 +171,8 @@ class Detector:
             Optional model configuration for model-based detection.
 
         rule_strategy:
-            Strategy used to resolve explicit and default rules.
+            Strategy used to resolve explicit and default rules. Accepts a
+            :class:`RuleStrategy` member or its string value.
 
         combination_strategy:
             Strategy used to combine regex and model results in mixed mode.
@@ -194,7 +196,6 @@ class Detector:
         )
 
         self._language = normalize_language(lang)
-        self._rule_strategy = rule_strategy
         self._combination_strategy = CombinationStrategy(combination_strategy)
         if self.detector_type in (DetectorType.MODEL, DetectorType.MIXED):
             self._model_config = model or resolve_default_model(self.default_rules)
@@ -474,7 +475,8 @@ class Detector:
             Optional model configuration.
 
         rule_strategy:
-            Rule resolution strategy.
+            Rule resolution strategy. Accepts a :class:`RuleStrategy` member
+            or its string value.
 
         Raises
         ------
@@ -504,8 +506,12 @@ class Detector:
                 "combination_strategy must be one of: any, all, precedence"
             ) from exc
 
-        if rule_strategy not in {"precedence", "extend"}:
-            raise ConfigurationError("rule_strategy must be 'precedence' or 'extend'")
+        try:
+            self._rule_strategy = RuleStrategy(rule_strategy)
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(
+                "rule_strategy must be 'precedence' or 'extend'"
+            ) from exc
 
         if model is not None and not isinstance(model, ModelConfig):
             raise ConfigurationError("model must be a ModelConfig or None")

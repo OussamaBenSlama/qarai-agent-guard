@@ -4,11 +4,16 @@ site_author: Qarai
 
 nav:
   - Home: index.md
-  - Architecture & Core Concepts: architecture.md
+  - Architecture: architecture.md
+  - Agent Guard: agent-guard.md
+  - Detectors: detectors.md
+  - Model-Based Detection: models.md
+  - Policies: policy.md
+  - Detection Patterns: patterns.md
+  - Security Modes & Runtime: runtime.md
+  - Events and Callbacks: events.md
+  - Exceptions: exceptions.md
   - Examples & Recipes: examples.md
-  - Policies and Actions : policy.md
-  - Detection Patterns: detection-patterns.md
-  - Security Modes & Runtime Behaviour: security-mode-runtime-behaviour.md
 
 theme:
   name: readthedocs

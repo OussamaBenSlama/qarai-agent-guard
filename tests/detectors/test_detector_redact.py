@@ -297,7 +297,7 @@ def test_redact_support_ticket_with_model_entities(
     )
 
     assert "Sarah Connor" not in result
-    assert "sarah.connor@cyberdyne.com" not in result
+    assert "jhon.smith@google.com" not in result
     assert "+14155552671" not in result
     assert "[REDACTED:PERSON]" in result
     assert "[REDACTED:EMAIL]" in result

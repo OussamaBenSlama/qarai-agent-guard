@@ -7,6 +7,7 @@ from qarai_agent_guard.core.schemas.detector import (
     CombinationStrategy,
     DefaultRules,
     DetectorType,
+    RuleStrategy,
 )
 from qarai_agent_guard.core.schemas.events import (
     Action,
@@ -49,6 +50,7 @@ __all__ = [
     "ModelTask",
     "PATTERNS_ROOT",
     "PolicyDecision",
+    "RuleStrategy",
     "SecurityEvent",
     "SecurityMode",
     "Severity",
