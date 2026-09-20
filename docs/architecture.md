@@ -1,86 +1,215 @@
-# Architecture & Core Concepts
+# Architecture
 
 ## Overview
 
-Qarai Agent Guard is organized around a central guard engine, security detectors, configurable policies, and optional framework integrations.
+The library is a guard for data that flows through AI systems.
+It inspects data, detects threats, and applies a policy.
+
+The guard has four parts:
+
+- `AgentGuard`: the entry point.
+- `Detector`: the detection layer.
+- `Policy`: the decision layer.
+- `PolicyExecutor`: the enforcement layer.
 
 ```text
 Application / AI Agent
-        |
-        v
-   AgentGuard
-        |
-        +-------------------+
-        |                   |
-        v                   v
-    Detectors           Policies
-        |                   |
-        v                   v
- Security Findings     Actions
-        |
-        v
- Monitoring / Events
+         |
+         v
+    AgentGuard
+         |
+         +---------------------+
+         |                     |
+         v                     v
+     Detectors              Policy
+         |                     |
+         `-- detections -->   `-> decision
+         |                     |
+         v                     v
+     PolicyExecutor ------> EnforcementResult
+         |
+         v
+ Events (monitoring / callbacks)
 ```
 
-## Core Flow
+## Core flow
 
-A typical inspection follows this process:
+A normal inspection follows these steps:
 
-1. An application sends a value to `AgentGuard`.
-2. The guard passes the value to the enabled detectors.
-3. Detectors analyze the value.
-4. Findings are produced when a security rule matches.
-5. The active policy determines what should happen.
-6. The event can optionally be reported to monitoring callbacks.
-7. The application continues, blocks the operation, raises an error, or applies a redaction depending on configuration.
+1. The application calls `inspect` with `key`, `value`, and `operation`.
+2. The guard validates the input.
+3. The guard runs the active detectors.
+4. Each detector converts the value to text.
+5. Each detector evaluates its rules or model.
+6. The guard collects the matched results.
+7. The guard asks the policy for a decision.
+8. The guard applies the security mode to the decision.
+9. The guard emits events when `emit_events=True`.
+10. The guard returns the decision and the detections.
 
-## Main Concepts
+
+
+## The role of each component
 
 ### AgentGuard
 
-`AgentGuard` is the main entry point used by applications.
-
+`AgentGuard` is the entry point.
 It manages:
 
-- Detector registration
-- Detector activation
-- Security inspections
-- Redactions
-- Policies
-- Monitoring callbacks
-- Runtime behavior
+- The detector list.
+- Detector registration and activation.
+- The policy.
+- The runtime settings:
+    - `security_mode`
+    - `fail_behavior`
+    - `execution_strategy`
+- The event callbacks.
 
-### Detectors
+The guard methods:
 
-A detector is responsible for identifying a specific class of threat.
+- `inspect`: returns the decision.
+- `inspect_with_results`: returns the decision and the detections.
+- `check`: convenience wrapper that always emits events.
+- `apply_redactions`: redacts content with all detectors.
+- `run_detectors`: runs the detectors only.
+- `register_detector`, `unregister_detector`, `disable_detector`,
+  `enable_detector`: detector management.
+- `register_callback`: event callback management.
+- `create`: builds a guard and can load a YAML policy.
 
-Built-in detectors include:
+See [Agent Guard](agent-guard.md).
 
-- `ModelReasoningDetector`
-- `PIIDetector`
-- `SecretsDetector`
-- XML/security pattern detection through configured patterns
+### Detector
 
-### Policies
+A detector inspects one value.
+It works in one of three modes:
 
-Policies define how detected findings are handled.
+- Regex detection.
+- Model inference.
+- Mixed detection.
 
-A policy can map a finding's severity to an action such as:
+The detector returns a `DetectionResult`.
+The result says whether data matched and which rules or model fired.
 
-- Allow
-- Warn
-- Block
-- Redact
-- Raise an error
+The detector also provides redaction:
+`redact` replaces matched values with a placeholder.
 
-### Patterns
+Detectors are plain rule engines by default.
+They can use a model for inference.
+See [Detectors](detectors.md) and [Model-Based Detection](models.md).
 
-Patterns are reusable security rules. They can be defined in YAML or supplied directly in Python.
+### Policy
 
-### Runtime Modes
+A policy decides what happens after detection.
+It receives the detection results and returns a `PolicyDecision`.
 
-The guard can operate in different runtime modes, including normal enforcement and monitoring-oriented behavior.
+A `PolicyDecision` has an `action`:
 
-## Design Principle
+- `allow`
+- `warn`
+- `redact`
+- `block`
+- `quarantine`
 
-The core engine is intentionally separated from framework integrations. This keeps the security layer reusable across different AI applications and agent frameworks.
+The decision also has a `reason` string.
+
+Built-in policies:
+
+- `default_policy`: the standard policy.
+- `strict_policy`: stricter behavior.
+- `permissive_policy`: more permissive behavior.
+
+You can write your own policy.
+Implement `evaluate` and `redact_decision`.
+See [Policies](policy.md).
+
+### PolicyExecutor
+
+`PolicyExecutor` applies the decision to content.
+It handles each action:
+
+| Action | Behavior |
+| --- | --- |
+| `allow` | Passes the content through. |
+| `warn` | Runs `on_warn` and passes the content through. |
+| `redact` | Redacts the content with the guard. |
+| `block` | Raises `AgentGuardViolation` or returns `blocked=True`. |
+| `quarantine` | Runs `quarantine_handler` or raises. |
+
+It returns an `EnforcementResult`.
+See [Policies](policy.md).
+
+## The inspection pipeline in detail
+
+```python
+from qarai_agent_guard import AgentGuard, Detector
+
+guard = AgentGuard(detectors=[Detector(name="pii", default_rules="pii")])
+
+decision, detections = guard.inspect_with_results(
+    key="mem",
+    value="Card 4111 1111 1111 1111",
+    operation="write",
+)
+
+print(decision.action)
+# Action.BLOCK
+
+print(decision.reason)
+# PII pattern detected in 'mem'
+
+print(len(detections))
+# 1
+
+print(detections[0].detector)
+# pii
+```
+
+## Runtime settings
+
+Three settings control the runtime:
+
+| Setting | Values | Role |
+| --- | --- | --- |
+| `security_mode` | `enforce`, `monitor` | How to apply the policy decision. |
+| `fail_behavior` | `fail_open`, `fail_closed` | How to react to errors. |
+| `execution_strategy` | `exhaustive`, `fail_fast` | How to run the detectors. |
+
+See [Security Modes & Runtime Behaviour](runtime.md).
+
+## Events
+
+The guard records decisions as events.
+A callback can receive every event.
+Events have a stable serializable shape for SIEM forwarding.
+
+See [Events and Callbacks](events.md).
+
+## Patterns
+
+Patterns are regex rules in YAML files.
+The library ships three built-in rule sets:
+
+- `pii`
+- `secrets`
+- `prompt_injection`
+
+`prompt_injection` is language-dependent (`en`, `fr`, `ar`).
+Custom pattern files follow the same format.
+
+See [Detection Patterns](patterns.md).
+
+## Errors
+
+The library raises typed exceptions.
+`GuardError` is the base class.
+Loader errors are `ValueError` subclasses.
+
+See [Exceptions](exceptions.md).
+
+## Design principle
+
+The core engine is independent of any agent framework.
+This keeps the security layer reusable.
+Applications call the guard directly with `(key, value, operation)`.
+The same convention works with adapters such as `AgentGuardMiddleware`.

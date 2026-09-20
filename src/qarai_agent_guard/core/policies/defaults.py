@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from qarai_agent_guard.core.policies.base import (
+from qarai_agent_guard.core.policies import (
     DefaultPolicy,
     SeverityPolicy,
+)
+from qarai_agent_guard.core.schemas import (
+    Action,
+    Severity,
     SeverityRule,
 )
-from qarai_agent_guard.core.schemas.events import Action, Severity
 
 
 def default_policy() -> DefaultPolicy:
     """Return the built-in default severity policy.
 
     Returns:
-        DefaultPolicy: Policy that blocks high/critical, redacts medium, and
-        warns on low/info matches.
+        DefaultPolicy: Policy that blocks high/critical matches.
+        It redacts medium matches and warns on low/info matches.
     """
     return DefaultPolicy()
 

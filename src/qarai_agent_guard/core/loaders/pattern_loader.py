@@ -5,6 +5,8 @@ from typing import Any
 
 import yaml
 
+from qarai_agent_guard.core.exceptions import PatternLoaderError
+
 REQUIRED_RULE_FIELDS = (
     "id",
     "name",
@@ -23,16 +25,11 @@ VALID_SEVERITIES = frozenset(
 )
 
 
-class PatternLoaderError(ValueError):
-    """Raised when a pattern file is invalid or cannot be processed."""
-
-
 class PatternLoader:
     """Load and validate YAML-based regex detection rules.
 
-    The loader is responsible for resolving pattern file paths, parsing YAML
-    files, and validating rule definitions before they are consumed by
-    detectors.
+    The loader resolves pattern file paths, parses YAML files, and validates
+    rule definitions before detectors consume them.
 
     Pattern files are expected to contain a top-level ``rules`` list:
 
@@ -56,7 +53,7 @@ class PatternLoader:
         """Initialize a pattern loader.
 
         Args:
-            root: Base directory used when resolving relative pattern paths.
+            root: Base directory used to resolve relative pattern paths.
 
         Raises:
             TypeError:
@@ -64,7 +61,7 @@ class PatternLoader:
             ValueError:
                 If ``root`` is empty.
         """
-        if not isinstance(root, (str, Path)):
+        if not isinstance(root, str | Path):
             msg = f"root must be str or Path, got {type(root).__name__}"
             raise TypeError(msg)
 
@@ -82,8 +79,8 @@ class PatternLoader:
     ) -> dict[str, Any]:
         """Load and parse a YAML pattern file.
 
-        This method only validates that the YAML structure is a mapping.
-        Rule-level validation is performed separately by ``validate_rules``.
+        Only validate that the YAML top-level value is a mapping.
+        ``validate_rules`` validates rule definitions separately.
 
         Args:
             path: Absolute or relative path to the YAML pattern file.
@@ -100,7 +97,7 @@ class PatternLoader:
             yaml.YAMLError:
                 If the YAML content cannot be parsed.
         """
-        if not isinstance(path, (str, Path)):
+        if not isinstance(path, str | Path):
             msg = f"path must be str or Path, got {type(path).__name__}"
             raise TypeError(msg)
 
@@ -134,7 +131,7 @@ class PatternLoader:
     ) -> None:
         """Validate pattern rule definitions.
 
-        Ensures every rule contains the required fields and that all field
+        Ensure every rule contains the required fields. Check that all field
         values have the expected types.
 
         Required fields:
@@ -204,9 +201,9 @@ class PatternLoader:
     ) -> list[dict[str, Any]]:
         """Load and validate detection rules from a YAML file.
 
-        This is the main public method used by detectors. It loads the YAML
-        file, extracts the ``rules`` section, validates each rule, and
-        returns ready-to-use rule definitions.
+        This is the main public method for detectors. Load the YAML file and
+        extract the ``rules`` section. Validate each rule. Return the
+        validated rule definitions.
 
         Args:
             path: Absolute or relative path to the pattern YAML file.
@@ -222,7 +219,7 @@ class PatternLoader:
             yaml.YAMLError:
                 If the YAML content cannot be parsed.
         """
-        if not isinstance(path, (str, Path)):
+        if not isinstance(path, str | Path):
             msg = f"path must be str or Path, got {type(path).__name__}"
             raise TypeError(msg)
 

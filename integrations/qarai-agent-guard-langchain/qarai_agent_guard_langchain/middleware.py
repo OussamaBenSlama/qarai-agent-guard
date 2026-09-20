@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -10,17 +11,19 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langgraph.prebuilt.tool_node import ToolCallRequest
-from qarai_agent_guard import Action, AgentGuard
+from qarai_agent_guard import AgentGuard, AgentGuardViolation, PolicyExecutor
 
-from qarai_agent_guard_langchain.exceptions import AgentGuardViolation
+from qarai_agent_guard_langchain.exceptions import AgentGuardMiddlewareError
+
+logger = logging.getLogger("qarai_agent_guard.langchain")
 
 
 class AgentGuardMiddleware(AgentMiddleware):
-    """
-    LangChain middleware adapter for qarai-agent-guard.
+    """LangChain middleware adapter for qarai-agent-guard.
 
     The middleware does not make security decisions.
-    AgentGuard policy decides the action.
+    The AgentGuard policy decides the action.
+    The PolicyExecutor enforces the action.
 
     Supported actions:
 
@@ -38,6 +41,12 @@ class AgentGuardMiddleware(AgentMiddleware):
 
         QUARANTINE:
             Send content to quarantine handler and stop execution.
+
+    Unexpected integration errors (not policy decisions) follow ``fail_open``:
+    with ``fail_open=True`` (default) they are logged and swallowed so the
+    agent keeps running; with ``fail_open=False`` they raise
+    ``AgentGuardMiddlewareError``. Policy BLOCK/QUARANTINE decisions always
+    raise ``AgentGuardViolation`` and are never swallowed.
     """
 
     def __init__(
@@ -49,6 +58,12 @@ class AgentGuardMiddleware(AgentMiddleware):
         scan_tool_calls: bool = True,
         scan_tool_results: bool = True,
         quarantine_handler: Callable | None = None,
+        raise_on_violation: bool = True,
+        on_violation: Callable | None = None,
+        on_warn: Callable | None = None,
+        on_error: Callable | None = None,
+        fail_open: bool = True,
+        emit_events: bool = True,
     ) -> None:
         if not isinstance(guard, AgentGuard):
             raise TypeError("guard must be an AgentGuard instance")
@@ -60,9 +75,17 @@ class AgentGuardMiddleware(AgentMiddleware):
         self.scan_tool_calls = scan_tool_calls
         self.scan_tool_results = scan_tool_results
 
-        self.quarantine_handler = quarantine_handler
+        self.fail_open = fail_open
+        self.on_error = on_error
 
-        self._violations = 0
+        self.executor = PolicyExecutor(
+            guard=guard,
+            quarantine_handler=quarantine_handler,
+            raise_on_violation=raise_on_violation,
+            on_violation=on_violation,
+            on_warn=on_warn,
+            emit_events=emit_events,
+        )
 
     @property
     def name(self) -> str:
@@ -70,7 +93,32 @@ class AgentGuardMiddleware(AgentMiddleware):
 
     @property
     def violation_count(self) -> int:
-        return self._violations
+        return self.executor.violation_count
+
+    @property
+    def quarantine_handler(self) -> Callable | None:
+        return self.executor.quarantine_handler
+
+    def _handle_unexpected(
+        self,
+        entry_point: str,
+        error: Exception,
+        context: Any,
+    ) -> None:
+        """Log an unexpected middleware error and apply the fail_open policy.
+
+        Policy violations (``AgentGuardViolation``) never reach this method.
+        """
+        logger.exception("AgentGuard: unexpected error in %s", entry_point)
+        if self.on_error is not None:
+            try:
+                self.on_error(hook=entry_point, error=error, context=context)
+            except Exception:
+                logger.exception("AgentGuard: on_error callback raised")
+        if not self.fail_open:
+            raise AgentGuardMiddlewareError(
+                f"AgentGuard middleware {entry_point!r} failed"
+            ) from error
 
     def _extract_content(
         self,
@@ -81,90 +129,6 @@ class AgentGuardMiddleware(AgentMiddleware):
 
         return str(message.content)
 
-    def _enforce_decision(
-        self,
-        *,
-        decision,
-        content: Any,
-        detections=None,
-        source: str,
-    ) -> Any:
-        """
-        Execute policy decision.
-
-        This is the only place where actions are enforced.
-        """
-
-        action = decision.action
-
-        if action == Action.ALLOW:
-            return content
-
-        if action == Action.WARN:
-            self.guard._emit_event(
-                detector="middleware",
-                severity="medium",
-                action=Action.WARN,
-                key=source,
-                message=decision.reason,
-                operation="middleware",
-                source_class="unknown",
-                metadata={
-                    "source": source,
-                    "reason": decision.reason,
-                },
-            )
-
-            return content
-
-        if action == Action.REDACT:
-            if not detections:
-                return content
-
-            return self.guard.apply_redactions(
-                content,
-                detections=detections,
-            )
-
-        if action == Action.BLOCK:
-            self._violations += 1
-
-            raise AgentGuardViolation(
-                f"""
-AgentGuard blocked execution.
-
-Source:
-{source}
-
-Reason:
-{decision.reason}
-"""
-            )
-
-        if action == Action.QUARANTINE:
-            self._violations += 1
-
-            if self.quarantine_handler:
-                self.quarantine_handler(
-                    source=source,
-                    content=content,
-                    decision=decision,
-                )
-
-            raise AgentGuardViolation(
-                f"""
-Content quarantined by AgentGuard.
-
-Source:
-{source}
-
-Reason:
-{decision.reason}
-"""
-            )
-
-        return content
-
     def before_model(
         self,
         state: Any,
@@ -173,32 +137,42 @@ Reason:
         if not self.scan_input:
             return None
 
-        messages = (
-            state.get("messages", [])
-            if isinstance(state, dict)
-            else getattr(state, "messages", [])
-        )
-
-        for message in messages:
-            content = self._extract_content(message)
-
-            if not content:
-                continue
-
-            decision, detections = self.guard.check(
-                key="model_input",
-                value=content,
-                operation="input",
+        try:
+            messages = (
+                state.get("messages", [])
+                if isinstance(state, dict)
+                else getattr(state, "messages", [])
             )
 
-            self._enforce_decision(
-                decision=decision,
-                content=content,
-                detections=detections,
-                source="model_input",
-            )
+            for message in messages:
+                content = self._extract_content(message)
 
-        return None
+                if not content:
+                    continue
+
+                decision, detections = self.guard.check(
+                    key="model_input",
+                    value=content,
+                    operation="input",
+                )
+
+                result = self.executor.enforce(
+                    decision=decision,
+                    content=content,
+                    detections=detections,
+                    source="model_input",
+                )
+
+                if result.content != content:
+                    message.content = result.content
+
+            return None
+
+        except AgentGuardViolation:
+            raise
+        except Exception as exc:
+            self._handle_unexpected("before_model", exc, state)
+            return None
 
     async def abefore_model(
         self,
@@ -215,42 +189,49 @@ Reason:
         if not self.scan_output:
             return None
 
-        messages = (
-            state.get("messages", [])
-            if isinstance(state, dict)
-            else getattr(state, "messages", [])
-        )
+        try:
+            messages = (
+                state.get("messages", [])
+                if isinstance(state, dict)
+                else getattr(state, "messages", [])
+            )
 
-        if not messages:
+            if not messages:
+                return None
+
+            message = messages[-1]
+
+            if not isinstance(
+                message,
+                AIMessage,
+            ):
+                return None
+
+            content = self._extract_content(message)
+
+            decision, detections = self.guard.check(
+                key="model_output",
+                value=content,
+                operation="output",
+            )
+
+            result = self.executor.enforce(
+                decision=decision,
+                content=content,
+                detections=detections,
+                source="model_output",
+            )
+
+            if result.content != content:
+                return {"messages": [AIMessage(content=result.content)]}
+
             return None
 
-        message = messages[-1]
-
-        if not isinstance(
-            message,
-            AIMessage,
-        ):
+        except AgentGuardViolation:
+            raise
+        except Exception as exc:
+            self._handle_unexpected("after_model", exc, state)
             return None
-
-        content = self._extract_content(message)
-
-        decision, detections = self.guard.check(
-            key="model_output",
-            value=content,
-            operation="output",
-        )
-
-        new_content = self._enforce_decision(
-            decision=decision,
-            content=content,
-            detections=detections,
-            source="model_output",
-        )
-
-        if new_content != content:
-            return {"messages": [AIMessage(content=new_content)]}
-
-        return None
 
     async def aafter_model(
         self,
@@ -273,58 +254,74 @@ Reason:
         )
 
         if self.scan_tool_calls:
-            arguments = request.tool_call.get(
-                "args",
-                {},
+            try:
+                arguments = request.tool_call.get(
+                    "args",
+                    {},
+                )
+
+                decision, detections = self.guard.check(
+                    key=tool_name,
+                    value=arguments,
+                    operation="tool_call",
+                )
+
+                result = self.executor.enforce(
+                    decision=decision,
+                    content=arguments,
+                    detections=detections,
+                    source=f"tool_call:{tool_name}",
+                )
+
+                if result.content != arguments:
+                    request.tool_call["args"] = result.content
+
+            except AgentGuardViolation:
+                raise
+            except Exception as exc:
+                self._handle_unexpected("wrap_tool_call", exc, request)
+
+        tool_result = handler(request)
+
+        if not self.scan_tool_results:
+            return tool_result
+
+        try:
+            content = (
+                tool_result.content
+                if isinstance(
+                    tool_result.content,
+                    str,
+                )
+                else str(tool_result.content)
             )
 
             decision, detections = self.guard.check(
-                key=tool_name,
-                value=arguments,
-                operation="tool_call",
+                key="tool_output",
+                value=content,
+                operation="tool_result",
             )
 
-            self._enforce_decision(
+            result = self.executor.enforce(
                 decision=decision,
-                content=arguments,
+                content=content,
                 detections=detections,
-                source=f"tool_call:{tool_name}",
+                source=f"tool_output:{tool_name}",
             )
 
-        result = handler(request)
+            if result.content != content:
+                return ToolMessage(
+                    content=result.content,
+                    tool_call_id=tool_result.tool_call_id,
+                )
 
-        if not self.scan_tool_results:
-            return result
+        except AgentGuardViolation:
+            raise
+        except Exception as exc:
+            self._handle_unexpected("wrap_tool_call", exc, tool_result)
+            return tool_result
 
-        content = (
-            result.content
-            if isinstance(
-                result.content,
-                str,
-            )
-            else str(result.content)
-        )
-
-        decision, detections = self.guard.check(
-            key="tool_output",
-            value=content,
-            operation="tool_result",
-        )
-
-        new_content = self._enforce_decision(
-            decision=decision,
-            content=content,
-            detections=detections,
-            source=f"tool_output:{tool_name}",
-        )
-
-        if new_content != content:
-            return ToolMessage(
-                content=new_content,
-                tool_call_id=result.tool_call_id,
-            )
-
-        return result
+        return tool_result
 
     async def awrap_tool_call(
         self,
@@ -340,55 +337,71 @@ Reason:
         )
 
         if self.scan_tool_calls:
-            arguments = request.tool_call.get(
-                "args",
-                {},
+            try:
+                arguments = request.tool_call.get(
+                    "args",
+                    {},
+                )
+
+                decision, detections = self.guard.check(
+                    key=tool_name,
+                    value=arguments,
+                    operation="tool_call",
+                )
+
+                result = self.executor.enforce(
+                    decision=decision,
+                    content=arguments,
+                    detections=detections,
+                    source=f"tool_call:{tool_name}",
+                )
+
+                if result.content != arguments:
+                    request.tool_call["args"] = result.content
+
+            except AgentGuardViolation:
+                raise
+            except Exception as exc:
+                self._handle_unexpected("awrap_tool_call", exc, request)
+
+        tool_result = await handler(request)
+
+        if not self.scan_tool_results:
+            return tool_result
+
+        try:
+            content = (
+                tool_result.content
+                if isinstance(
+                    tool_result.content,
+                    str,
+                )
+                else str(tool_result.content)
             )
 
             decision, detections = self.guard.check(
-                key=tool_name,
-                value=arguments,
-                operation="tool_call",
+                key="tool_output",
+                value=content,
+                operation="tool_result",
             )
 
-            self._enforce_decision(
+            result = self.executor.enforce(
                 decision=decision,
-                content=arguments,
+                content=content,
                 detections=detections,
-                source=f"tool_call:{tool_name}",
+                source=f"tool_output:{tool_name}",
             )
 
-        result = await handler(request)
+            if result.content != content:
+                return ToolMessage(
+                    content=result.content,
+                    tool_call_id=tool_result.tool_call_id,
+                )
 
-        if not self.scan_tool_results:
-            return result
+        except AgentGuardViolation:
+            raise
+        except Exception as exc:
+            self._handle_unexpected("awrap_tool_call", exc, tool_result)
+            return tool_result
 
-        content = (
-            result.content
-            if isinstance(
-                result.content,
-                str,
-            )
-            else str(result.content)
-        )
-
-        decision, detections = self.guard.check(
-            key="tool_output",
-            value=content,
-            operation="tool_result",
-        )
-
-        new_content = self._enforce_decision(
-            decision=decision,
-            content=content,
-            detections=detections,
-            source=f"tool_output:{tool_name}",
-        )
-
-        if new_content != content:
-            return ToolMessage(
-                content=new_content,
-                tool_call_id=result.tool_call_id,
-            )
-
-        return result
+        return tool_result

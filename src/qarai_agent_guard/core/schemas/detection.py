@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from qarai_agent_guard.core.schemas.models import ModelDetectionResult
 
 LANGUAGE_ALIASES: dict[str, str] = {
     "en": "en",
@@ -13,7 +17,7 @@ PATTERNS_ROOT = Path(__file__).resolve().parent.parent / "detectors" / "patterns
 
 @dataclass(slots=True)
 class Match:
-    """Single regex match produced by a pattern rule.
+    """A regex match from a pattern rule.
 
     Attributes:
         pattern_id (str): Stable identifier of the matched rule.
@@ -30,10 +34,10 @@ class Match:
 
 @dataclass(slots=True)
 class DetectionResult:
-    """Outcome of a detector inspection against one payload.
+    """Result of a detector inspection against one payload.
 
     Attributes:
-        detector (str): Detector name that produced this result.
+        detector (str): Name of the detector that produced this result.
         matched (bool): Whether any pattern matched.
         message (str): Summary message when matched.
         matches (list[Match]): Individual pattern hits.
@@ -45,3 +49,4 @@ class DetectionResult:
     message: str = ""
     matches: list[Match] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    model_detection_result: ModelDetectionResult | None = None

@@ -5,6 +5,7 @@ from typing import Any
 
 import yaml
 
+from qarai_agent_guard.core.exceptions import PolicyLoaderError
 from qarai_agent_guard.core.policies.base import (
     SeverityPolicy,
     severity_rule_from_mapping,
@@ -15,10 +16,6 @@ VALID_ACTIONS = frozenset(action.value for action in Action)
 VALID_SEVERITIES = frozenset(
     {"info", "low", "medium", "high", "critical"},
 )
-
-
-class PolicyLoaderError(ValueError):
-    """Raised when a policy file is invalid or cannot be parsed."""
 
 
 class PolicyLoader:
@@ -37,7 +34,7 @@ class PolicyLoader:
             root (str | Path | None, optional): Base directory for relative
                 policy paths. Defaults to ``None`` (use paths as given).
         """
-        if root is not None and not isinstance(root, (str, Path)):
+        if root is not None and not isinstance(root, str | Path):
             msg = f"root must be str, Path, or None, got {type(root).__name__}"
             raise TypeError(msg)
         self.root = Path(root) if root is not None else None
@@ -107,7 +104,7 @@ class PolicyLoader:
             PolicyLoaderError: If the file content is invalid.
             OSError: If the file cannot be read.
         """
-        if not isinstance(path, (str, Path)):
+        if not isinstance(path, str | Path):
             msg = f"path must be str or Path, got {type(path).__name__}"
             raise TypeError(msg)
 

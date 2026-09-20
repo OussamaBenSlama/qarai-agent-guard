@@ -1,0 +1,199 @@
+from typing import Any, cast
+
+import pytest
+
+from qarai_agent_guard.core.exceptions import (
+    ConfigurationError,
+    ModelFormatterError,
+    ModelOutputError,
+)
+from qarai_agent_guard.core.models import (
+    DefaultOutputFormatter,
+    InferenceEngine,
+    ModelLoader,
+    resolve_default_model,
+)
+from qarai_agent_guard.core.models.config import (
+    _format_default_injection,
+    _format_default_pii,
+)
+from qarai_agent_guard.core.models.engine import (
+    _as_float,
+    _severity_for_score,
+)
+from qarai_agent_guard.core.schemas import (
+    ModelConfig,
+    ModelDetectionResult,
+    ModelTask,
+    Severity,
+)
+
+
+@pytest.mark.parametrize("rule", ["prompt_injection", "pii", "secrets", None])
+def test_default_model_resolution(rule):
+    config = resolve_default_model(rule)
+    if rule in ("secrets", None):
+        assert config is None
+    else:
+        assert isinstance(config, ModelConfig)
+
+
+@pytest.mark.parametrize("task", list(ModelTask))
+def test_model_config_normalizes_all_supported_tasks(task):
+    config = ModelConfig(provider="huggingface", model="model", task=task.value)
+    assert config.task is task
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"provider": "other", "model": "m"},
+        {"provider": "huggingface", "model": ""},
+        {"provider": "huggingface", "model": "m", "threshold": 1.1},
+    ],
+)
+def test_model_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ConfigurationError):
+        ModelConfig(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "value,expected", [(1, 1.0), (0.3, 0.3), (True, None), ("1", None)]
+)
+def test_score_helpers(value, expected):
+    assert _as_float(value) == expected
+    assert _severity_for_score(0.5, 0.5) is Severity.CRITICAL
+
+
+@pytest.mark.parametrize(
+    ("raw", "detected"),
+    [
+        (True, True),
+        (False, False),
+        (1, True),
+        (0, False),
+        ({"label": "LABEL_0", "score": 0.9}, True),
+        ([{"entity": "NAME", "score": 0.9}], True),
+        ([{"generated_text": "safe"}], False),
+        ([{"generated_text": "unsafe"}], True),
+    ],
+)
+def test_default_formatter_supports_standard_huggingface_shapes(
+    raw, detected, injection_config
+):
+    assert DefaultOutputFormatter().format(raw, injection_config).detected is detected
+
+
+@pytest.mark.parametrize(
+    "raw", [{"custom": "shape"}, [], [{"generated_text": "unknown"}]]
+)
+def test_default_formatter_rejects_unsupported_outputs(raw, injection_config):
+    with pytest.raises(ModelOutputError):
+        DefaultOutputFormatter().format(raw, injection_config)
+
+
+def test_default_formatter_accepts_empty_token_classification_output(pii_config):
+    result = DefaultOutputFormatter().format([], pii_config)
+
+    assert result.detected is False
+    assert result.score == 0.0
+    assert result.severity is Severity.LOW
+
+
+def test_custom_output_formatter_is_called_with_raw_output_and_config():
+    captured = {}
+
+    def formatter(raw, config):
+        captured["raw"] = raw
+        captured["config"] = config
+        return ModelDetectionResult(detected=True, score=0.8)
+
+    config = ModelConfig(
+        provider="huggingface",
+        model="test/model",
+        output_formatter=formatter,
+    )
+
+    class Provider:
+        def predict(self, text):
+            return {"custom": text}
+
+    class Loader:
+        def get(self, requested_config):
+            assert requested_config is config
+            return Provider()
+
+    result = InferenceEngine(cast(ModelLoader, Loader())).predict("payload", config)
+
+    assert result.detected is True
+    assert captured == {"raw": {"custom": "payload"}, "config": config}
+
+
+def test_custom_output_formatter_errors_are_wrapped():
+    def formatter(raw, config):
+        raise RuntimeError("formatter boom")
+
+    config = ModelConfig(
+        provider="huggingface",
+        model="test/model",
+        output_formatter=formatter,
+    )
+
+    class Provider:
+        def predict(self, text):
+            return object()
+
+    class Loader:
+        def get(self, requested_config):
+            return Provider()
+
+    with pytest.raises(ModelFormatterError, match="formatter boom"):
+        InferenceEngine(cast(ModelLoader, Loader())).predict("payload", config)
+
+
+def test_custom_output_formatter_must_return_model_detection_result():
+    config = ModelConfig(
+        provider="huggingface",
+        model="test/model",
+        output_formatter=cast(Any, lambda raw, config: {"detected": True}),
+    )
+
+    class Provider:
+        def predict(self, text):
+            return object()
+
+    class Loader:
+        def get(self, requested_config):
+            return Provider()
+
+    with pytest.raises(ModelFormatterError, match="must return ModelDetectionResult"):
+        InferenceEngine(cast(ModelLoader, Loader())).predict("payload", config)
+
+
+@pytest.mark.parametrize(
+    "label,score,detected",
+    [("INJECTION", 0.5, True), ("LABEL_1", 0.9, True), ("OTHER", 0.9, False)],
+)
+def test_default_injection_formatter(label, score, detected, injection_config):
+    result = _format_default_injection(
+        {"label": label, "score": score}, injection_config
+    )
+    assert result.detected is detected
+
+
+def test_default_pii_formatter_preserves_qualifying_entities(pii_config):
+    result = _format_default_pii(
+        [{"entity_group": "EMAIL", "score": 0.9, "start": 0, "end": 4}],
+        pii_config,
+    )
+    assert result.detected and result.entities[0]["entity_group"] == "EMAIL"
+
+
+def test_loader_key_shares_default_model_across_detection_options(injection_config):
+    altered = ModelConfig(
+        provider="huggingface",
+        model=injection_config.model,
+        task=injection_config.task,
+        threshold=0.9,
+    )
+    assert ModelLoader._key(injection_config) == ModelLoader._key(altered)

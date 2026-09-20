@@ -1,0 +1,130 @@
+from __future__ import annotations
+
+import json
+import logging
+import threading
+
+from qarai_agent_guard.core.exceptions import ConfigurationError, ModelLoadError
+from qarai_agent_guard.core.models.providers.base import ModelProvider
+from qarai_agent_guard.core.models.providers.factory import ModelProviderFactory
+from qarai_agent_guard.core.schemas.models import ModelConfig
+
+logger = logging.getLogger(__name__)
+
+
+class ModelLoader:
+    """Load, cache, and manage the lifecycle of model providers.
+
+    Cache providers according to their runtime model configuration. Multiple
+    detectors that use the same model can reuse the same loaded provider.
+    """
+
+    def __init__(self) -> None:
+        self._cache: dict[str, ModelProvider] = {}
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _key(config: ModelConfig) -> str:
+        """Build a deterministic cache key for the loaded model provider.
+
+        Only configuration that affects the loaded provider participates in
+        the key. Detection-level settings such as threshold and output
+        formatter must not create separate model instances.
+        """
+        if not isinstance(config, ModelConfig):
+            raise ConfigurationError("config must be a ModelConfig instance")
+
+        try:
+            return json.dumps(
+                {
+                    "provider": config.provider.value,
+                    "model": config.model,
+                    "task": config.task.value,
+                    "model_options": config.model_options or {},
+                    "tokenizer_options": config.tokenizer_options or {},
+                },
+                sort_keys=True,
+                default=str,
+            )
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(
+                "ModelConfig contains options that cannot be used to build a cache key"
+            ) from exc
+
+    def get(self, config: ModelConfig) -> ModelProvider:
+        """Return a loaded provider for the given configuration.
+
+        Create and load the provider lazily on first access. Providers that
+        fail to load are not added to the cache.
+        """
+        key = self._key(config)
+
+        with self._lock:
+            provider = self._cache.get(key)
+            if provider is not None:
+                logger.debug("Reusing cached provider for model '%s'", config.model)
+                return provider
+
+            logger.info(
+                "Loading model '%s' via provider '%s' (task='%s')",
+                config.model,
+                config.provider.value,
+                config.task.value,
+            )
+            try:
+                provider = ModelProviderFactory.create(config)
+                provider.load()
+            except Exception as exc:
+                raise ModelLoadError(
+                    f"Failed to load model '{config.model}' "
+                    f"using provider '{config.provider.value}'"
+                ) from exc
+
+            self._cache[key] = provider
+            logger.info("Model '%s' loaded and cached", config.model)
+            return provider
+
+    def release(self, config: ModelConfig) -> None:
+        """Remove and unload the provider associated with ``config``.
+
+        Do nothing when no provider is cached for the configuration.
+        """
+        key = self._key(config)
+
+        with self._lock:
+            provider = self._cache.pop(key, None)
+
+        if provider is None:
+            return
+
+        logger.info("Releasing model '%s'", config.model)
+        try:
+            provider.unload()
+        except Exception as exc:
+            raise ModelLoadError(f"Failed to unload model '{config.model}'") from exc
+
+    def clear(self) -> None:
+        """Remove and unload all cached providers.
+
+        Give every cached provider the chance to unload. A provider failure
+        does not stop the cleanup of the other providers.
+        """
+        with self._lock:
+            providers = list(self._cache.values())
+            self._cache.clear()
+
+        if providers:
+            logger.info("Unloading %d cached model provider(s)", len(providers))
+
+        errors: list[Exception] = []
+
+        for provider in providers:
+            try:
+                provider.unload()
+            except Exception as exc:
+                errors.append(exc)
+
+        if errors:
+            raise ModelLoadError(
+                f"Failed to unload {len(errors)} model provider(s)"
+            ) from errors[0]
