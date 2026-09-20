@@ -4,12 +4,12 @@ from qarai_agent_guard.core.guards import AgentGuard
 from qarai_agent_guard.core.loaders import PolicyLoader
 from qarai_agent_guard.core.policies import (
     Policy,
-    PolicyExecutor,  # at runtime
     SeverityPolicy,
     default_policy,
     permissive_policy,
     strict_policy,
 )
+from qarai_agent_guard.core.policies.enforcement import PolicyExecutor
 from qarai_agent_guard.core.schemas import SeverityRule
 
 __all__ = [

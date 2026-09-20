@@ -13,6 +13,8 @@ nav:
   - Security Modes & Runtime: runtime.md
   - Events and Callbacks: events.md
   - Exceptions: exceptions.md
+  - LangChain Integration: langchain.md
+  - CrewAI Integration: crewai.md
   - Examples & Recipes: examples.md
 
 theme:

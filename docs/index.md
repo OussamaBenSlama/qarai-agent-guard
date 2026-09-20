@@ -124,6 +124,8 @@ Read the pages in this order:
 | [Security Modes & Runtime Behaviour](runtime.md) | Security modes, fail behavior, and execution strategy. |
 | [Events and Callbacks](events.md) | `SecurityEvent`, event types, and monitoring. |
 | [Exceptions](exceptions.md) | The exception taxonomy of the library. |
+| [LangChain Integration](langchain.md) | The `AgentGuardMiddleware` for LangChain agents. |
+| [CrewAI Integration](crewai.md) | The `enable_guard` hooks for CrewAI crews. |
 | [Examples and Recipes](examples.md) | Real examples with expected output. |
 
 ## Terminology

@@ -9,13 +9,9 @@ from crewai.hooks import (
     before_llm_call,
     before_tool_call,
 )
-from qarai_agent_guard import AgentGuard
+from qarai_agent_guard import AgentGuard, AgentGuardViolation, PolicyExecutor
 
-from qarai_agent_guard_crewai.agent_guard_adapter import AgentGuardAdapter
-from qarai_agent_guard_crewai.exceptions import (
-    AgentGuardHookError,
-    AgentGuardViolation,
-)
+from qarai_agent_guard_crewai.exceptions import AgentGuardHookError
 from qarai_agent_guard_crewai.schema import ALL_HOOKS, HookName, _HookConfig
 from qarai_agent_guard_crewai.utils import (
     _get_attr_or_key,
@@ -32,9 +28,12 @@ def enable_guard(
     fail_open: bool = True,
     on_error: Callable[..., None] | None = None,
     on_violation: Callable[..., None] | None = None,
+    on_warn: Callable[..., None] | None = None,
     quarantine_handler: Callable[..., None] | None = None,
+    raise_on_violation: bool = True,
+    emit_events: bool = True,
     scan_all_messages: bool = False,
-) -> AgentGuardAdapter:
+) -> PolicyExecutor:
     """
     Register AgentGuard checks against CrewAI's hook system.
 
@@ -52,15 +51,21 @@ def enable_guard(
             whenever a hook swallows or re-raises an unexpected error.
         on_violation: Optional callback invoked with (source=, decision=,
             content=) whenever AgentGuard blocks or quarantines content.
+        on_warn: Optional callback invoked with (source=, decision=,
+            content=) whenever the policy returns a WARN action.
         quarantine_handler: Optional callback invoked when the policy
             action is QUARANTINE, receiving (source=, content=, decision=).
+        raise_on_violation: If True (default), BLOCK and QUARANTINE action
+            raise an AgentGuardViolation. If False, the executor returns a
+            result with blocked set to True instead of raising.
+        emit_events: If True (default), the guard records telemetry events.
         scan_all_messages: If False (default), only the latest message is
             inspected before an LLM call. If True, all messages in the
             conversation are inspected on every call. The default avoids
             repeatedly scanning messages that were already inspected.
 
     Returns:
-        The AgentGuardAdapter used internally, in case callers want
+        The PolicyExecutor used internally, in case callers want
         to inspect `.violations` or reuse `.enforce()` elsewhere.
 
     Raises:
@@ -77,10 +82,13 @@ def enable_guard(
             f"Valid options are: {sorted(ALL_HOOKS)}"
         )
 
-    adapter = AgentGuardAdapter(
-        guard,
+    executor = PolicyExecutor(
+        guard=guard,
         quarantine_handler=quarantine_handler,
         on_violation=on_violation,
+        on_warn=on_warn,
+        raise_on_violation=raise_on_violation,
+        emit_events=emit_events,
     )
 
     cfg = _HookConfig(
@@ -120,15 +128,14 @@ def enable_guard(
                         continue
 
                     idx = i if scan_all_messages else len(messages) - 1
-                    key = "model_input"
                     source = f"crewai.before_llm_call:message_{idx}"
 
                     decision, detections = guard.check(
-                        key=key,
+                        key="model_input",
                         value=text,
                         operation="input",
                     )
-                    result = adapter.enforce(
+                    result = executor.enforce(
                         decision=decision,
                         content=text,
                         detections=detections,
@@ -160,7 +167,7 @@ def enable_guard(
                     value=response_text,
                     operation="output",
                 )
-                result = adapter.enforce(
+                result = executor.enforce(
                     decision=decision,
                     content=response_text,
                     detections=detections,
@@ -196,7 +203,7 @@ def enable_guard(
                     value=tool_input,
                     operation="tool_input",
                 )
-                result = adapter.enforce(
+                result = executor.enforce(
                     decision=decision,
                     content=tool_input,
                     detections=detections,
@@ -231,7 +238,7 @@ def enable_guard(
                     value=result_text,
                     operation="tool_result",
                 )
-                enforced = adapter.enforce(
+                enforced = executor.enforce(
                     decision=decision,
                     content=result_text,
                     detections=detections,
@@ -259,4 +266,4 @@ def enable_guard(
         sorted(selected),
         fail_open,
     )
-    return adapter
+    return executor

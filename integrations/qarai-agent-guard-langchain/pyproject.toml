@@ -109,3 +109,6 @@ select = [
 testpaths = [
     "tests",
 ]
+markers = [
+    "integration: tests that load real HuggingFace models (require --run-integration)",
+]

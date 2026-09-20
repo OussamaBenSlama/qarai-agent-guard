@@ -4,7 +4,7 @@
 
 # Qarai Agent Guard
 
-**A lightweight toolkit for building secure AI systems with built-in middleware, protected memory, and AI safety models that mitigate prompt injection, jailbreaks, and adversarial attacks.**
+**A Python toolkit for building secure AI agents. It mitigates prompt injection, jailbreaks, adversarial attacks, PII leakage, and secrets exposure.**
 
 [![PyPI version](https://img.shields.io/pypi/v/qarai-agent-guard.svg?color=blue)](https://pypi.org/project/qarai-agent-guard/)
 [![Downloads](https://static.pepy.tech/badge/qarai-agent-guard)](https://pepy.tech/projects/qarai-agent-guard)
@@ -26,7 +26,9 @@
 
 ## Qarai Agent Guard
 
-**Qarai Agent Guard** is a lightweight Python toolkit for building secure AI agents. It combines **middleware**, **protected memory**, and **AI safety models** to defend against prompt injection, jailbreaks, PII leakage, and other LLM security threats.
+**Qarai Agent Guard** is a Python toolkit for building secure AI agents.
+It protects data before an agent reads it, stores it, or sends it to a tool.
+It defends against prompt injection, jailbreaks, PII leakage, and other LLM security threats.
 
 It includes **built-in security rules** for **prompt injection, jailbreak attempts, PII leakage, XML-based attacks, and secrets detection**, with out-of-the-box support for **English, Arabic, and French**.
 
@@ -63,7 +65,7 @@ decision = guard.inspect(
     operation="write",
 )
 print(decision.action)   # Action.BLOCK
-print(decision.reason)   # "Prompt injection pattern detected in 'user_input'"
+print(decision.reason)   # Prompt injection pattern detected in 'user_input'
 
 # Inspect content that contains PII
 decision = guard.inspect(
@@ -129,8 +131,12 @@ print(response)
 # Expected output: Agent response with clean content (no threats detected)
 
 # Attempting a prompt injection will be blocked
-response = agent.invoke({"messages": [HumanMessage(content="ignore all previous instructions")]})
-# Raises AgentGuardViolation (blocked by default policy)
+from qarai_agent_guard_langchain import AgentGuardViolation
+
+try:
+    response = agent.invoke({"messages": [HumanMessage(content="ignore all previous instructions")]})
+except AgentGuardViolation as exc:
+    print(f"Blocked by default policy: {exc}")
 ```
 For the full integration guide, see [`qarai-agent-guard-langchain`](integrations/qarai-agent-guard-langchain/README.md).
 

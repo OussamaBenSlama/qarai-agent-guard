@@ -1,2 +1,2 @@
-class AgentGuardViolation(Exception):
-    """Raised when AgentGuard blocks an operation."""
+class AgentGuardMiddlewareError(Exception):
+    """Raised when the middleware itself fails unexpectedly (bug, bad context, etc.)."""
